@@ -14,24 +14,29 @@ import {
   Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { DatasetResponse } from '@/types/dataset';
 
-interface Dataset {
-  id: string;
-  name: string;
-  description: string;
-  imageCount: number;
-  annotationCount: number;
-  classCount: number;
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 interface ImageItem {
   id: string;
+  dataset_id: string;
   filename: string;
-  url: string;
-  annotationCount: number;
+  file_path: string;
+  file_url: string;
+  file_size: number;
+  file_hash: string;
   width: number;
   height: number;
-  size: number;
+  channels: number;
+  format: string;
+  split: string;
+  annotations: any[];
+  metadata: any;
+  is_annotated: boolean;
+  annotation_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export default function DatasetDetailPage() {
@@ -39,44 +44,56 @@ export default function DatasetDetailPage() {
   const params = useParams();
   const datasetId = params.id as string;
   
-  const [dataset, setDataset] = useState<Dataset | null>(null);
+  const [dataset, setDataset] = useState<DatasetResponse | null>(null);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
   useEffect(() => {
     loadDatasetDetail();
+    loadImages();
   }, [datasetId]);
 
   const loadDatasetDetail = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/v1/datasets/${datasetId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch dataset details');
+      }
+
+      const data = await response.json();
+      setDataset(data);
+    } catch (error) {
+      console.error('Failed to load dataset details:', error);
+      toast.error('Failed to load dataset details');
+    }
+  };
+
+  const loadImages = async () => {
     setLoading(true);
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockDataset: Dataset = {
-        id: datasetId,
-        name: 'Vehicle Detection Dataset',
-        description: 'Annotated data containing various vehicle types and traffic scenarios',
-        imageCount: 1250,
-        annotationCount: 3456,
-        classCount: 8
-      };
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/v1/datasets/${datasetId}/images?page=1&page_size=100`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+        },
+      });
 
-      const mockImages: ImageItem[] = Array.from({ length: 20 }, (_, i) => ({
-        id: `image-${i + 1}`,
-        filename: `vehicle_${(i + 1).toString().padStart(4, '0')}.jpg`,
-        url: `https://picsum.photos/400/300?random=${i + 1}`,
-        annotationCount: Math.floor(Math.random() * 5) + 1,
-        width: 800,
-        height: 600,
-        size: Math.floor(Math.random() * 500) + 100 // KB
-      }));
+      if (!response.ok) {
+        throw new Error('Failed to fetch images');
+      }
 
-      setDataset(mockDataset);
-      setImages(mockImages);
+      const data = await response.json();
+      setImages(data.items || []);
     } catch (error) {
-      toast.error('Failed to load dataset details');
+      console.error('Failed to load images:', error);
+      toast.error('Failed to load images');
     } finally {
       setLoading(false);
     }
@@ -99,6 +116,11 @@ export default function DatasetDetailPage() {
   };
 
   const handleAnnotationView = (imageId: string) => {
+    const imageData = images.find(img => img.id === imageId);
+    if (imageData) {
+      // 将图片数据存储到 sessionStorage
+      sessionStorage.setItem('currentImageData', JSON.stringify(imageData));
+    }
     router.push(`/datasets/${datasetId}/images/${imageId}/annotate`);
   };
 
@@ -200,7 +222,7 @@ export default function DatasetDetailPage() {
               <ImageIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dataset.imageCount.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{dataset.num_images.toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -210,7 +232,7 @@ export default function DatasetDetailPage() {
               <Tag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dataset.annotationCount.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{dataset.num_annotations.toLocaleString()}</div>
             </CardContent>
           </Card>
 
@@ -220,7 +242,7 @@ export default function DatasetDetailPage() {
               <Settings className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{dataset.classCount}</div>
+              <div className="text-2xl font-bold">{dataset.class_names.length}</div>
             </CardContent>
           </Card>
 
@@ -230,9 +252,9 @@ export default function DatasetDetailPage() {
               <Tag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Math.floor(dataset.imageCount * 0.7).toLocaleString()}</div>
+              <div className="text-2xl font-bold">0</div>
               <p className="text-xs text-muted-foreground">
-                70% Complete
+                0% Complete
               </p>
             </CardContent>
           </Card>
@@ -292,9 +314,12 @@ export default function DatasetDetailPage() {
                   {/* Thumbnail */}
                   <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
                     <img
-                      src={image.url}
+                      src={image.file_url}
                       alt={image.filename}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80x80?text=No+Image';
+                      }}
                     />
                   </div>
                   
@@ -304,14 +329,14 @@ export default function DatasetDetailPage() {
                       {image.filename}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Size: {image.width}×{image.height} • {(image.size / 1024).toFixed(1)}KB
+                      Size: {image.width}×{image.height} • {(image.file_size / 1024).toFixed(1)}KB • {image.split}
                     </p>
                   </div>
                   
                   {/* Annotation Info */}
                   <div className="text-center px-4">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {image.annotationCount}
+                      {image.annotation_count}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Annotations
@@ -326,7 +351,7 @@ export default function DatasetDetailPage() {
                       onClick={() => handleAnnotationView(image.id)}
                       className="min-w-[80px]"
                     >
-                      {image.annotationCount > 0 ? 'View' : 'Annotate'}
+                      {image.annotation_count > 0 ? 'View' : 'Annotate'}
                     </Button>
                   </div>
                 </div>

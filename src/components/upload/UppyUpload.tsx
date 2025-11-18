@@ -22,11 +22,12 @@ const MINIO_CONFIG = {
 };
 
 interface UppyUploadProps {
-  datasetId: string;
+  datasetId?: string | null;
   onUploadComplete?: (result: any) => void;
+  onProgress?: (progress: { percentage: number; uploadedFiles: number; totalFiles: number; uploadedBytes: number; totalBytes: number }) => void;
 }
 
-export default function UppyUpload({ datasetId, onUploadComplete }: UppyUploadProps) {
+export default function UppyUpload({ datasetId, onUploadComplete, onProgress }: UppyUploadProps) {
   const [uppy] = useState(() => 
     new Uppy({
       restrictions: {
@@ -96,6 +97,44 @@ export default function UppyUpload({ datasetId, onUploadComplete }: UppyUploadPr
       toast.info('Starting file upload...');
     });
 
+    uppy.on('progress', (progress) => {
+      if (onProgress) {
+        onProgress({
+          percentage: progress,
+          uploadedFiles: 0,
+          totalFiles: uppy.getFiles().length,
+          uploadedBytes: 0,
+          totalBytes: 0,
+        });
+      }
+    });
+
+    uppy.on('upload-progress', (file, progress) => {
+      const files = uppy.getFiles();
+      const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
+      const uploadedBytes = files.reduce((sum, f) => {
+        if (f.progress?.uploadComplete) {
+          return sum + (f.size || 0);
+        } else if (f.id === file?.id) {
+          return sum + (progress.bytesUploaded || 0);
+        }
+        return sum;
+      }, 0);
+      
+      const uploadedFiles = files.filter(f => f.progress?.uploadComplete).length;
+      const percentage = totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
+
+      if (onProgress) {
+        onProgress({
+          percentage,
+          uploadedFiles,
+          totalFiles: files.length,
+          uploadedBytes,
+          totalBytes,
+        });
+      }
+    });
+
     uppy.on('upload-success', (file, response) => {
       toast.success(`File "${file.name}" uploaded successfully`);
       
@@ -124,13 +163,22 @@ export default function UppyUpload({ datasetId, onUploadComplete }: UppyUploadPr
       toast.error(`File "${file.name}" upload failed: ${error.message}`);
     });
 
-    uppy.on('complete', () => {
+    uppy.on('complete', (result) => {
       toast.success('All files uploaded successfully');
-      uppy.reset();
+      if (onProgress) {
+        onProgress({
+          percentage: 100,
+          uploadedFiles: result.successful.length,
+          totalFiles: uppy.getFiles().length,
+          uploadedBytes: result.successful.reduce((sum, f) => sum + (f.size || 0), 0),
+          totalBytes: result.successful.reduce((sum, f) => sum + (f.size || 0), 0),
+        });
+      }
+      setTimeout(() => uppy.reset(), 2000);
     });
 
     uppy.upload();
-  }, [uppy, datasetId, onUploadComplete]);
+  }, [uppy, datasetId, onUploadComplete, onProgress]);
 
   React.useEffect(() => {
     return () => {

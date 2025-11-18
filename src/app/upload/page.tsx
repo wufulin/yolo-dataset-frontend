@@ -1,36 +1,31 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button, Input, Select, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import Navigation from '@/components/layout/Navigation';
-import { ArrowLeft, FolderOpen, Upload as UploadIcon } from 'lucide-react';
+import { ArrowLeft, Upload as UploadIcon } from 'lucide-react';
 import UppyUpload from '@/components/upload/UppyUpload';
 import { toast } from 'sonner';
 
+type DatasetType = 'Classify' | 'Detect' | 'OBB' | 'Segment' | 'POSE';
+
+interface UploadProgress {
+  percentage: number;
+  uploadedFiles: number;
+  totalFiles: number;
+  uploadedBytes: number;
+  totalBytes: number;
+}
+
 export default function UploadPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [datasetName, setDatasetName] = useState('');
   const [datasetDescription, setDatasetDescription] = useState('');
+  const [datasetType, setDatasetType] = useState<DatasetType>('Detect');
   const [datasetId, setDatasetId] = useState<string | null>(null);
-  const [existingDatasets, setExistingDatasets] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string>('');
-
-  useEffect(() => {
-    // Mock dataset list
-    const mockDatasets = [
-      { id: '1', name: 'Default Dataset' },
-      { id: '2', name: 'Vehicle Detection Dataset' },
-      { id: '3', name: 'Face Recognition Dataset' },
-    ];
-    setExistingDatasets(mockDatasets);
-
-    const preselectedDataset = searchParams.get('dataset');
-    if (preselectedDataset) {
-      setSelectedDatasetId(preselectedDataset);
-    }
-  }, [searchParams]);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleCreateDataset = async () => {
     if (!datasetName.trim()) {
@@ -45,6 +40,7 @@ export default function UploadPage() {
         id: newDatasetId,
         name: datasetName,
         description: datasetDescription,
+        type: datasetType,
         created_at: new Date().toISOString(),
       };
 
@@ -52,19 +48,34 @@ export default function UploadPage() {
       console.log('Creating dataset:', newDataset);
 
       setDatasetId(newDatasetId);
-      setSelectedDatasetId(newDatasetId);
       toast.success(`Dataset "${datasetName}" created successfully`);
     } catch (error) {
       toast.error('Failed to create dataset');
     }
   };
 
+  const handleUploadProgress = (progress: UploadProgress) => {
+    setUploadProgress(progress);
+    if (progress.percentage > 0 && progress.percentage < 100) {
+      setIsUploading(true);
+    } else if (progress.percentage === 100) {
+      setIsUploading(false);
+    }
+  };
+
   const handleUploadComplete = (result: any) => {
     toast.success('File upload complete, processing...');
+    setIsUploading(false);
     // Add file processing logic here
   };
 
-  const selectedDataset = existingDatasets.find(d => d.id === selectedDatasetId);
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -94,88 +105,70 @@ export default function UploadPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left side: Create or select dataset */}
+          {/* Left side: Create dataset */}
           <div className="lg:col-span-1">
-            <div className="space-y-6">
-              {/* Select Existing Dataset */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FolderOpen className="h-5 w-5" />
-                    <span>Select Dataset</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Choose an existing dataset or create a new one
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Select Dataset
-                    </label>
-                    <select
-                      value={selectedDatasetId}
-                      onChange={(e) => setSelectedDatasetId(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Please select a dataset</option>
-                      {existingDatasets.map((dataset) => (
-                        <option key={dataset.id} value={dataset.id}>
-                          {dataset.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedDatasetId && (
-                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
-                      <p className="text-sm text-green-800 dark:text-green-200">
-                        Selected: {selectedDataset?.name}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Create New Dataset */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create New Dataset</CardTitle>
-                  <CardDescription>
-                    Create a new dataset
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Input
-                    label="Dataset Name"
-                    value={datasetName}
-                    onChange={(e) => setDatasetName(e.target.value)}
-                    placeholder="Enter dataset name"
+            {/* Create New Dataset */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Create New Dataset</CardTitle>
+                <CardDescription>
+                  Create a new dataset to start uploading
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Input
+                  label="Dataset Name"
+                  value={datasetName}
+                  onChange={(e) => setDatasetName(e.target.value)}
+                  placeholder="Enter dataset name"
+                />
+                
+                <Select
+                  label="Dataset Type"
+                  value={datasetType}
+                  onChange={(e) => setDatasetType(e.target.value as DatasetType)}
+                  options={[
+                    { value: 'Classify', label: 'Classify' },
+                    { value: 'Detect', label: 'Detect' },
+                    { value: 'OBB', label: 'OBB' },
+                    { value: 'Segment', label: 'Segment' },
+                    { value: 'POSE', label: 'POSE' },
+                  ]}
+                />
+                
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Dataset Description
+                  </label>
+                  <textarea
+                    value={datasetDescription}
+                    onChange={(e) => setDatasetDescription(e.target.value)}
+                    placeholder="Enter dataset description (optional)"
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Dataset Description
-                    </label>
-                    <textarea
-                      value={datasetDescription}
-                      onChange={(e) => setDatasetDescription(e.target.value)}
-                      placeholder="Enter dataset description (optional)"
-                      rows={3}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    />
+                </div>
+                
+                <Button
+                  onClick={handleCreateDataset}
+                  className="w-full"
+                  disabled={!datasetName.trim()}
+                >
+                  Create Dataset
+                </Button>
+
+                {datasetId && (
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-800 dark:text-green-200 font-medium">
+                      ✓ Dataset Created: {datasetName}
+                    </p>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
+                      Type: {datasetType}
+                    </p>
                   </div>
-                  
-                  <Button
-                    onClick={handleCreateDataset}
-                    className="w-full"
-                    disabled={!datasetName.trim()}
-                  >
-                    Create Dataset
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right side: Upload area */}
@@ -191,16 +184,50 @@ export default function UploadPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {selectedDatasetId ? (
-                  <UppyUpload
-                    datasetId={selectedDatasetId}
-                    onUploadComplete={handleUploadComplete}
-                  />
-                ) : (
-                  <div className="text-center py-12">
-                    <UploadIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      Please select a dataset or create a new one first
+                <UppyUpload
+                  datasetId={datasetId}
+                  onUploadComplete={handleUploadComplete}
+                  onProgress={handleUploadProgress}
+                />
+                
+                {/* Upload Progress Bar */}
+                {uploadProgress && uploadProgress.percentage > 0 && (
+                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        {isUploading ? 'Uploading...' : 'Upload Complete'}
+                      </span>
+                      <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                        {uploadProgress.percentage}%
+                      </span>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 mb-3 overflow-hidden">
+                      <div
+                        className="bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${uploadProgress.percentage}%` }}
+                      />
+                    </div>
+                    
+                    {/* Upload Details */}
+                    <div className="flex items-center justify-between text-xs text-blue-800 dark:text-blue-200">
+                      <span>
+                        Files: {uploadProgress.uploadedFiles} / {uploadProgress.totalFiles}
+                      </span>
+                      <span>
+                        {formatBytes(uploadProgress.uploadedBytes)} / {formatBytes(uploadProgress.totalBytes)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Dataset Info */}
+                {datasetId && (
+                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Uploading to: <span className="font-medium text-gray-900 dark:text-gray-100">{datasetName}</span>
+                      {datasetType && <span className="ml-2 text-gray-500">({datasetType})</span>}
                     </p>
                   </div>
                 )}

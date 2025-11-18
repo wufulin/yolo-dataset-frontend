@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 interface Annotation {
   id: string;
   className: string;
+  class_id?: number;
   bbox: {
     x: number;
     y: number;
@@ -32,16 +33,22 @@ interface Annotation {
   confidence?: number;
 }
 
-const CLASSES = [
-  { id: 'car', name: 'Car', color: '#ff6b6b' },
-  { id: 'truck', name: 'Truck', color: '#4ecdc4' },
-  { id: 'bus', name: 'Bus', color: '#45b7d1' },
-  { id: 'motorcycle', name: 'Motorcycle', color: '#96ceb4' },
-  { id: 'bicycle', name: 'Bicycle', color: '#feca57' },
-  { id: 'person', name: 'Person', color: '#ff9ff3' },
-  { id: 'traffic_light', name: 'Traffic Light', color: '#54a0ff' },
-  { id: 'traffic_sign', name: 'Traffic Sign', color: '#5f27cd' }
-];
+interface ClassInfo {
+  id: string;
+  name: string;
+  color: string;
+  class_id?: number;
+}
+
+// 生成颜色的辅助函数
+const generateColor = (index: number): string => {
+  const colors = [
+    '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57',
+    '#ff9ff3', '#54a0ff', '#5f27cd', '#48dbfb', '#0abde3',
+    '#ee5a6f', '#c44569', '#f368e0', '#ff9ff3', '#00d2d3'
+  ];
+  return colors[index % colors.length];
+};
 
 export default function AnnotateImagePage() {
   const router = useRouter();
@@ -60,7 +67,8 @@ export default function AnnotateImagePage() {
   } | null>(null);
   
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [selectedClass, setSelectedClass] = useState(CLASSES[0]);
+  const [classes, setClasses] = useState<ClassInfo[]>([]);
+  const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [currentTool, setCurrentTool] = useState<'bbox' | 'point'>('bbox');
   const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(null);
@@ -79,34 +87,65 @@ export default function AnnotateImagePage() {
 
   const loadImage = async () => {
     try {
-      // Mock load image
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 从 sessionStorage 读取图片数据
+      const imageDataStr = sessionStorage.getItem('currentImageData');
+      if (!imageDataStr) {
+        toast.error('No image data found');
+        return;
+      }
+
+      const imageData = JSON.parse(imageDataStr);
       
-      const mockImage = {
-        url: `https://picsum.photos/800/600?random=${imageId}`,
-        width: 800,
-        height: 600,
-        filename: `image_${imageId}.jpg`
+      const loadedImage = {
+        url: imageData.file_url,
+        width: imageData.width,
+        height: imageData.height,
+        filename: imageData.filename
       };
 
-      setImage(mockImage);
+      setImage(loadedImage);
       
-      // Mock load existing annotations
-      const mockAnnotations: Annotation[] = [
-        {
-          id: '1',
-          className: 'car',
-          bbox: { x: 100, y: 150, width: 200, height: 100 }
+      // 转换后端返回的标注数据为前端格式
+      // YOLO格式: bbox = { x_center, y_center, width, height } (归一化坐标 0-1)
+      // 需要转换为像素坐标
+      const convertedAnnotations: Annotation[] = imageData.annotations.map((ann: any) => ({
+        id: ann._id,
+        className: ann.class_name,
+        class_id: ann.class_id,
+        bbox: {
+          // 从归一化的 YOLO 格式转换为像素坐标
+          x: (ann.bbox.x_center - ann.bbox.width / 2) * imageData.width,
+          y: (ann.bbox.y_center - ann.bbox.height / 2) * imageData.height,
+          width: ann.bbox.width * imageData.width,
+          height: ann.bbox.height * imageData.height
         },
-        {
-          id: '2',
-          className: 'person',
-          bbox: { x: 400, y: 200, width: 80, height: 160 }
-        }
-      ];
+        confidence: ann.confidence
+      }));
       
-      setAnnotations(mockAnnotations);
+      setAnnotations(convertedAnnotations);
+
+      // 从 annotations 中提取所有不同的 class_name 作为 classes
+      const uniqueClasses = new Map<string, ClassInfo>();
+      imageData.annotations.forEach((ann: any, index: number) => {
+        if (!uniqueClasses.has(ann.class_name)) {
+          uniqueClasses.set(ann.class_name, {
+            id: ann.class_name,
+            name: ann.class_name,
+            color: generateColor(ann.class_id || index),
+            class_id: ann.class_id
+          });
+        }
+      });
+      
+      const classesArray = Array.from(uniqueClasses.values());
+      setClasses(classesArray);
+      
+      // 设置默认选中第一个类别
+      if (classesArray.length > 0) {
+        setSelectedClass(classesArray[0]);
+      }
     } catch (error) {
+      console.error('Failed to load image:', error);
       toast.error('Failed to load image');
     }
   };
@@ -133,7 +172,7 @@ export default function AnnotateImagePage() {
 
     // Draw annotations
     annotations.forEach(annotation => {
-      const classInfo = CLASSES.find(c => c.id === annotation.className);
+      const classInfo = classes.find(c => c.id === annotation.className);
       const color = classInfo?.color || '#ff0000';
       
       ctx.save();
@@ -211,10 +250,11 @@ export default function AnnotateImagePage() {
       const xPos = Math.min(x, currentStart.x);
       const yPos = Math.min(y, currentStart.y);
 
-      if (width > 10 && height > 10) {
+      if (width > 10 && height > 10 && selectedClass) {
         const newAnnotation: Annotation = {
           id: Date.now().toString(),
           className: selectedClass.id,
+          class_id: selectedClass.class_id,
           bbox: { x: xPos, y: yPos, width, height }
         };
         
@@ -352,25 +392,31 @@ export default function AnnotateImagePage() {
             <div>
               <h3 className="font-medium mb-3">Annotation Classes</h3>
               <div className="space-y-1">
-                {CLASSES.map((classInfo) => (
-                  <button
-                    key={classInfo.id}
-                    onClick={() => setSelectedClass(classInfo)}
-                    className={`w-full text-left p-2 rounded text-sm ${
-                      selectedClass.id === classInfo.id
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-4 h-4 rounded"
-                        style={{ backgroundColor: classInfo.color }}
-                      />
-                      <span>{classInfo.name}</span>
-                    </div>
-                  </button>
-                ))}
+                {classes.length > 0 ? (
+                  classes.map((classInfo) => (
+                    <button
+                      key={classInfo.id}
+                      onClick={() => setSelectedClass(classInfo)}
+                      className={`w-full text-left p-2 rounded text-sm ${
+                        selectedClass?.id === classInfo.id
+                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-4 h-4 rounded"
+                          style={{ backgroundColor: classInfo.color }}
+                        />
+                        <span>{classInfo.name}</span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    No classes available
+                  </div>
+                )}
               </div>
             </div>
 
@@ -397,44 +443,50 @@ export default function AnnotateImagePage() {
             <div>
               <h3 className="font-medium mb-3">Annotations ({annotations.length})</h3>
               <div className="space-y-1">
-                {annotations.map((annotation) => {
-                  const classInfo = CLASSES.find(c => c.id === annotation.className);
-                  return (
-                    <div
-                      key={annotation.id}
-                      className={`p-2 rounded border cursor-pointer ${
-                        selectedAnnotation === annotation.id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-200 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700'
-                      }`}
-                      onClick={() => setSelectedAnnotation(annotation.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className="w-3 h-3 rounded"
-                            style={{ backgroundColor: classInfo?.color }}
-                          />
-                          <span className="text-sm">{classInfo?.name}</span>
+                {annotations.length > 0 ? (
+                  annotations.map((annotation) => {
+                    const classInfo = classes.find(c => c.id === annotation.className);
+                    return (
+                      <div
+                        key={annotation.id}
+                        className={`p-2 rounded border cursor-pointer ${
+                          selectedAnnotation === annotation.id
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700'
+                        }`}
+                        onClick={() => setSelectedAnnotation(annotation.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div 
+                              className="w-3 h-3 rounded"
+                              style={{ backgroundColor: classInfo?.color }}
+                            />
+                            <span className="text-sm">{classInfo?.name || annotation.className}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAnnotation(annotation.id);
+                            }}
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteAnnotation(annotation.id);
-                          }}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        <div className="text-xs text-gray-500 mt-1">
+                          x:{annotation.bbox.x.toFixed(0)}, y:{annotation.bbox.y.toFixed(0)}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        x:{annotation.bbox.x.toFixed(0)}, y:{annotation.bbox.y.toFixed(0)}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    No annotations yet
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -462,7 +514,7 @@ export default function AnnotateImagePage() {
           
           {/* Info Tooltip */}
           <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
-            Selected Class: {selectedClass.name} • Current Tool: {currentTool === 'bbox' ? 'Bounding Box' : 'Point'}
+            Selected Class: {selectedClass?.name || 'None'} • Current Tool: {currentTool === 'bbox' ? 'Bounding Box' : 'Point'}
           </div>
         </div>
       </main>

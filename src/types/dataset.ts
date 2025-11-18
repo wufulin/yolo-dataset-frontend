@@ -56,6 +56,25 @@ export interface Dataset {
   is_favorite: boolean;
 }
 
+// 后端 API 返回的数据集类型（简化版）
+export interface DatasetResponse {
+  id: string;
+  name: string;
+  description?: string;
+  dataset_type: 'detect' | 'obb' | 'segment' | 'pose' | 'classify';
+  class_names: string[];
+  num_images: number;
+  num_annotations: number;
+  splits: {
+    train: number;
+    val: number;
+    test: number;
+  };
+  created_at: string;
+  updated_at: string;
+  status?: string;
+}
+
 export interface DatasetStatistics {
   basic_stats: {
     total_images: number;

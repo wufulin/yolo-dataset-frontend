@@ -6,66 +6,34 @@ import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } fro
 import Navigation from '@/components/layout/Navigation';
 import { Plus, FolderOpen, Image, Tag, Calendar, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { DatasetResponse } from '@/types/dataset';
 
-interface Dataset {
-  id: string;
-  name: string;
-  description: string;
-  imageCount: number;
-  annotationCount: number;
-  createdAt: string;
-  updatedAt: string;
-  status: 'active' | 'processing' | 'completed';
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 export default function DatasetsPage() {
   const router = useRouter();
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock load dataset list
     const loadDatasets = async () => {
       setLoading(true);
       try {
-        // Mock API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockDatasets: Dataset[] = [
-          {
-            id: '1',
-            name: 'Vehicle Detection Dataset',
-            description: 'Annotated data containing various vehicle types and traffic scenarios',
-            imageCount: 1250,
-            annotationCount: 3456,
-            createdAt: '2024-01-15',
-            updatedAt: '2024-01-20',
-            status: 'active'
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/api/v1/datasets?page=1&page_size=100`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
           },
-          {
-            id: '2',
-            name: 'Face Recognition Dataset',
-            description: 'Face image annotations across multiple age groups and ethnicities',
-            imageCount: 890,
-            annotationCount: 2134,
-            createdAt: '2024-01-10',
-            updatedAt: '2024-01-18',
-            status: 'completed'
-          },
-          {
-            id: '3',
-            name: 'COCO Training Dataset',
-            description: 'Object detection annotations in COCO format',
-            imageCount: 567,
-            annotationCount: 1456,
-            createdAt: '2024-01-05',
-            updatedAt: '2024-01-12',
-            status: 'processing'
-          }
-        ];
-        
-        setDatasets(mockDatasets);
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch datasets');
+        }
+
+        const data = await response.json();
+        setDatasets(data.items || []);
       } catch (error) {
+        console.error('Failed to load datasets:', error);
         toast.error('Failed to load datasets');
       } finally {
         setLoading(false);
@@ -83,23 +51,50 @@ export default function DatasetsPage() {
     router.push(`/datasets/${datasetId}`);
   };
 
-  const handleUploadToDataset = (datasetId: string) => {
-    router.push(`/upload?dataset=${datasetId}`);
-  };
-
-  const getStatusBadge = (status: Dataset['status']) => {
-    const statusConfig = {
-      active: { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-      processing: { label: 'Processing', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
-      completed: { label: 'Completed', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' }
+  const getDatasetTypeBadge = (datasetType: DatasetResponse['dataset_type']) => {
+    const typeConfig = {
+      detect: { label: 'Detect', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+      obb: { label: 'OBB', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
+      segment: { label: 'Segment', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+      pose: { label: 'Pose', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+      classify: { label: 'Classify', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200' }
     };
 
-    const config = statusConfig[status];
+    const config = typeConfig[datasetType];
+    return (
+      <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${config.color}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  const getStatusBadge = (status?: string) => {
+    const statusConfig: Record<string, { label: string; color: string }> = {
+      active: { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+      processing: { label: 'Processing', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+      completed: { label: 'Completed', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+      draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' },
+      ready: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+      archived: { label: 'Archived', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }
+    };
+
+    const config = status ? statusConfig[status] || statusConfig['active'] : statusConfig['active'];
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
         {config.label}
       </span>
     );
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
   if (loading) {
@@ -159,7 +154,7 @@ export default function DatasetsPage() {
             <CardContent>
               <div className="text-2xl font-bold">{datasets.length}</div>
               <p className="text-xs text-muted-foreground">
-                {datasets.filter(d => d.status === 'active').length} active datasets
+                All datasets
               </p>
             </CardContent>
           </Card>
@@ -171,7 +166,7 @@ export default function DatasetsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {datasets.reduce((sum, d) => sum + d.imageCount, 0).toLocaleString()}
+                {datasets.reduce((sum, d) => sum + d.num_images, 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
                 Across {datasets.length} datasets
@@ -186,10 +181,10 @@ export default function DatasetsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {datasets.reduce((sum, d) => sum + d.annotationCount, 0).toLocaleString()}
+                {datasets.reduce((sum, d) => sum + d.num_annotations, 0).toLocaleString()}
               </div>
               <p className="text-xs text-muted-foreground">
-                Avg {Math.round(datasets.reduce((sum, d) => sum + d.annotationCount, 0) / datasets.length || 0)} per dataset
+                Avg {Math.round(datasets.reduce((sum, d) => sum + d.num_annotations, 0) / datasets.length || 0)} per dataset
               </p>
             </CardContent>
           </Card>
@@ -234,52 +229,44 @@ export default function DatasetsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {datasets.map((dataset) => (
-                  <Card key={dataset.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{dataset.name}</CardTitle>
-                          <CardDescription className="mt-1">
-                            {dataset.description}
-                          </CardDescription>
-                        </div>
+                  <Card key={dataset.id} className="hover:shadow-lg transition-shadow flex flex-col">
+                    <CardHeader className="flex-none">
+                      <div className="flex items-start justify-between mb-3">
+                        {getDatasetTypeBadge(dataset.dataset_type)}
                         {getStatusBadge(dataset.status)}
                       </div>
+                      <div>
+                        <CardTitle className="text-lg">{dataset.name}</CardTitle>
+                        <CardDescription className="mt-1 line-clamp-2 min-h-[2.5rem]">
+                          {dataset.description || 'No description provided'}
+                        </CardDescription>
+                      </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 flex flex-col justify-between">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-300">Images</span>
-                          <span className="font-medium">{dataset.imageCount.toLocaleString()}</span>
+                          <span className="font-medium">{dataset.num_images.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-300">Annotations</span>
-                          <span className="font-medium">{dataset.annotationCount.toLocaleString()}</span>
+                          <span className="font-medium">{dataset.num_annotations.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-300">Updated</span>
-                          <span className="font-medium">{dataset.updatedAt}</span>
+                          <span className="font-medium text-xs">{formatDate(dataset.updated_at)}</span>
                         </div>
-                        
-                        <div className="flex space-x-2 pt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUploadToDataset(dataset.id)}
-                            className="flex-1"
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Upload
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleViewDataset(dataset.id)}
-                            className="flex-1"
-                          >
-                            <ArrowRight className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </div>
+                      </div>
+                      
+                      <div className="pt-4">
+                        <Button
+                          size="sm"
+                          onClick={() => handleViewDataset(dataset.id)}
+                          className="w-full"
+                        >
+                          View Dataset
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
