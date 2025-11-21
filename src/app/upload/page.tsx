@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Select, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import Navigation from '@/components/layout/Navigation';
-import { ArrowLeft, Upload as UploadIcon } from 'lucide-react';
+import { ArrowLeft, Upload as UploadIcon, FileText, Info } from 'lucide-react';
 import UppyUpload from '@/components/upload/UppyUpload';
 import { toast } from 'sonner';
 
@@ -120,22 +120,25 @@ export default function UploadPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
+      <header className="relative bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        {/* 装饰性背景元素 */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-200 dark:bg-indigo-900/20 rounded-full blur-3xl opacity-30"></div>
+          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-pink-200 dark:bg-pink-900/20 rounded-full blur-3xl opacity-30"></div>
+        </div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6 sm:py-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.back()}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back</span>
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Upload Dataset
-              </h1>
             </div>
           </div>
         </div>
@@ -147,14 +150,19 @@ export default function UploadPage() {
           {/* Left side: Create dataset */}
           <div className="lg:col-span-1">
             {/* Dataset Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dataset Information</CardTitle>
-                <CardDescription>
-                  Enter dataset information before uploading files
-                </CardDescription>
+            <Card className="border-0 shadow-xl bg-white dark:bg-gray-800/50 backdrop-blur-sm">
+              <CardHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Dataset Information</CardTitle>
+                    <CardDescription className="mt-0.5 text-gray-600 dark:text-gray-400">Enter dataset information before uploading files</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="pt-6 space-y-5">
                 <Input
                   label="Dataset Name *"
                   value={datasetName}
@@ -176,7 +184,7 @@ export default function UploadPage() {
                 />
                 
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
                     Dataset Description
                   </label>
                   <textarea
@@ -184,7 +192,7 @@ export default function UploadPage() {
                     onChange={(e) => setDatasetDescription(e.target.value)}
                     placeholder="Enter dataset description (optional)"
                     rows={3}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    className="w-full p-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:focus:border-indigo-400 resize-none bg-white dark:bg-gray-800/50 text-gray-900 dark:text-gray-100 transition-all duration-200 shadow-sm hover:shadow-md"
                   />
                 </div>
                 
@@ -194,17 +202,19 @@ export default function UploadPage() {
 
           {/* Right side: Upload area */}
           <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <UploadIcon className="h-5 w-5" />
-                  <span>Upload Files</span>
-                </CardTitle>
-                <CardDescription>
-                  Supports JPG, PNG, WebP and other image formats, max 100GB per file
-                </CardDescription>
+            <Card className="border-0 shadow-xl bg-white dark:bg-gray-800/50 backdrop-blur-sm">
+              <CardHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 shadow-md">
+                    <UploadIcon className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Upload Files</CardTitle>
+                    <CardDescription className="mt-0.5 text-gray-600 dark:text-gray-400">Supports JPG, PNG, WebP and other image formats, max 100GB per file</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <UppyUpload
                   datasetInfo={
                     datasetName.trim() && datasetType
@@ -223,27 +233,42 @@ export default function UploadPage() {
                 
                 {/* Upload Progress Bar */}
                 {uploadProgress && uploadProgress.percentage > 0 && (
-                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        {isUploading ? 'Uploading...' : 'Upload Complete'}
+                  <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border-2 border-blue-200 dark:border-blue-800 shadow-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                        {isUploading ? (
+                          <>
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            Upload Complete
+                          </>
+                        )}
                       </span>
-                      <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      <span className="text-lg font-bold text-blue-900 dark:text-blue-100">
                         {uploadProgress.percentage}%
                       </span>
                     </div>
                     
                     {/* Progress Bar */}
-                    <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 mb-3 overflow-hidden">
+                    <div className="w-full bg-blue-200/50 dark:bg-blue-800/50 rounded-full h-4 mb-4 overflow-hidden shadow-inner">
                       <div
-                        className="bg-blue-600 dark:bg-blue-500 h-3 rounded-full transition-all duration-300 ease-out"
+                        className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 h-4 rounded-full transition-all duration-300 ease-out shadow-md relative overflow-hidden"
                         style={{ width: `${uploadProgress.percentage}%` }}
-                      />
+                      >
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Upload Details */}
-                    <div className="flex items-center justify-between text-xs text-blue-800 dark:text-blue-200">
-                      <span>
+                    <div className="flex items-center justify-between text-xs font-semibold text-blue-800 dark:text-blue-200 bg-white/50 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-3.5 w-3.5" />
                         Files: {uploadProgress.uploadedFiles} / {uploadProgress.totalFiles}
                       </span>
                       <span>
@@ -255,9 +280,10 @@ export default function UploadPage() {
                 
                 {/* Upload Status */}
                 {uploadComplete && datasetId && (
-                  <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
-                    <p className="text-xs text-green-800 dark:text-green-200">
-                      ✓ Files uploaded and dataset created successfully!
+                  <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border-2 border-green-300 dark:border-green-700 shadow-lg">
+                    <p className="text-sm font-semibold text-green-800 dark:text-green-200 flex items-center gap-2">
+                      <span className="text-lg">✓</span>
+                      Files uploaded and dataset created successfully!
                     </p>
                   </div>
                 )}
@@ -265,32 +291,45 @@ export default function UploadPage() {
             </Card>
 
             {/* Upload Instructions */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Upload Instructions</CardTitle>
+            <Card className="mt-6 border-0 shadow-xl bg-gradient-to-br from-white to-indigo-50/30 dark:from-gray-800/50 dark:to-indigo-900/10 backdrop-blur-sm">
+              <CardHeader className="pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
+                    <Info className="h-5 w-5 text-white" />
+                  </div>
+                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Upload Instructions</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+              <CardContent className="pt-6 space-y-4">
+                <div className="flex items-start space-x-4 p-3 rounded-lg bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+                  <div className="p-2 rounded-lg bg-blue-500/10 dark:bg-blue-400/20 mt-0.5">
+                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
                     Supported formats: YOLO Format with ZIP Archive
                   </p>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="flex items-start space-x-4 p-3 rounded-lg bg-purple-50/50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800">
+                  <div className="p-2 rounded-lg bg-purple-500/10 dark:bg-purple-400/20 mt-0.5">
+                    <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
                     File size limit: Max 100GB per file
                   </p>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="flex items-start space-x-4 p-3 rounded-lg bg-pink-50/50 dark:bg-pink-900/20 border border-pink-100 dark:border-pink-800">
+                  <div className="p-2 rounded-lg bg-pink-500/10 dark:bg-pink-400/20 mt-0.5">
+                    <div className="w-3 h-3 rounded-full bg-pink-500"></div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
                     File quantity limit: Max 100 files
                   </p>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="flex items-start space-x-4 p-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800">
+                  <div className="p-2 rounded-lg bg-indigo-500/10 dark:bg-indigo-400/20 mt-0.5">
+                    <div className="w-3 h-3 rounded-full bg-indigo-500"></div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
                     After upload, the system will automatically process files and generate thumbnails
                   </p>
                 </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import { getCurrentUser, clearAuthState } from '@/lib/auth-simple';
 import Navigation from '@/components/layout/Navigation';
-import { Plus, FolderOpen, Tag, LogOut, Settings } from 'lucide-react';
+import { Plus, FolderOpen, Tag, LogOut, Settings, Image, ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DashboardStats {
@@ -150,80 +150,93 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Dashboard
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">
-              Manage your YOLO datasets and annotations
-            </p>
-          </div>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Quick Actions */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Button 
-              className="h-20 flex flex-col items-center justify-center space-y-2"
+              className="relative h-28 flex flex-col items-center justify-center space-y-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-blue-700 hover:to-indigo-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 group overflow-hidden"
               onClick={() => handleQuickAction('create-dataset')}
             >
-              <FolderOpen className="h-6 w-6" />
-              <span>Create Dataset</span>
+              {/* 装饰性背景元素 */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+              
+              <div className="relative z-10 p-3 rounded-xl bg-white/20 group-hover:bg-white/30 backdrop-blur-sm transition-all duration-300 group-hover:scale-110">
+                <FolderOpen className="h-7 w-7" />
+              </div>
+              <span className="relative z-10 font-bold text-base tracking-wide">Create Dataset</span>
             </Button>
             <Button 
               variant="outline" 
-              className="h-20 flex flex-col items-center justify-center space-y-2"
+              className="relative h-28 flex flex-col items-center justify-center space-y-3 border-2 border-indigo-200 dark:border-indigo-700 hover:border-indigo-400 dark:hover:border-indigo-500 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 transition-all duration-300 group overflow-hidden shadow-lg hover:shadow-xl"
               onClick={() => handleQuickAction('view-datasets')}
             >
-              <Tag className="h-6 w-6" />
-              <span>View Datasets</span>
+              {/* 装饰性背景元素 */}
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 via-indigo-500/5 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              <div className="relative z-10 p-3 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/40 dark:to-purple-900/40 group-hover:from-indigo-200 group-hover:to-purple-200 dark:group-hover:from-indigo-800/50 dark:group-hover:to-purple-800/50 transition-all duration-300 group-hover:scale-110 shadow-md">
+                <Tag className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <span className="relative z-10 font-bold text-base tracking-wide text-gray-800 dark:text-gray-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">View Datasets</span>
             </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Datasets</CardTitle>
-              <FolderOpen className="h-4 w-4 text-muted-foreground" />
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 hover:shadow-xl transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 dark:bg-blue-800/30 rounded-full -mr-16 -mt-16 opacity-20"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              <CardTitle className="text-sm font-semibold text-blue-900 dark:text-blue-100">Total Datasets</CardTitle>
+              <div className="p-2 rounded-lg bg-blue-500/10 dark:bg-blue-400/20">
+                <FolderOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.datasetCount}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-bold text-blue-900 dark:text-blue-100 mb-1">
+                {stats.datasetCount}
+              </div>
+              <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
                 {Math.floor(stats.datasetCount * 0.8)} active datasets
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Images</CardTitle>
-              <div className="h-4 w-4 text-muted-foreground">🖼️</div>
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 hover:shadow-xl transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200 dark:bg-purple-800/30 rounded-full -mr-16 -mt-16 opacity-20"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              <CardTitle className="text-sm font-semibold text-purple-900 dark:text-purple-100">Total Images</CardTitle>
+              <div className="p-2 rounded-lg bg-purple-500/10 dark:bg-purple-400/20">
+                <Image className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.imageCount.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-bold text-purple-900 dark:text-purple-100 mb-1">
+                {stats.imageCount.toLocaleString()}
+              </div>
+              <p className="text-xs font-medium text-purple-700 dark:text-purple-300">
                 +156 from last week
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Annotations</CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
+          <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 hover:shadow-xl transition-all duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-green-200 dark:bg-green-800/30 rounded-full -mr-16 -mt-16 opacity-20"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+              <CardTitle className="text-sm font-semibold text-green-900 dark:text-green-100">Total Annotations</CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10 dark:bg-green-400/20">
+                <Tag className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.annotationCount.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="relative z-10">
+              <div className="text-3xl font-bold text-green-900 dark:text-green-100 mb-1">
+                {stats.annotationCount.toLocaleString()}
+              </div>
+              <p className="text-xs font-medium text-green-700 dark:text-green-300">
                 +432 from last week
               </p>
             </CardContent>
@@ -232,83 +245,137 @@ export default function DashboardPage() {
 
         {/* Recent Datasets */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Datasets</CardTitle>
-              <CardDescription>Your recently created and accessed datasets</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {recentDatasets.map((dataset) => (
-                <div 
-                  key={dataset.id} 
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/datasets/${dataset.id}`)}
-                >
-                  <div>
-                    <h3 className="font-semibold">{dataset.name}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {dataset.imageCount} images • {dataset.annotationCount} annotations
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
+          <Card className="relative border-0 shadow-xl bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/10 backdrop-blur-sm overflow-hidden">
+            {/* 装饰性背景 */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-200/20 dark:bg-blue-800/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+            
+            <CardHeader className="relative pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+                  <FolderOpen className="h-5 w-5 text-white" />
                 </div>
-              ))}
-              <div className="text-center pt-4">
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Recent Datasets</CardTitle>
+                  <CardDescription className="mt-0.5 text-gray-600 dark:text-gray-400">Your recently created and accessed datasets</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="relative pt-6 space-y-4">
+              {recentDatasets.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                    <FolderOpen className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 font-medium">No recent datasets</p>
+                </div>
+              ) : (
+                recentDatasets.map((dataset) => (
+                  <div 
+                    key={dataset.id} 
+                    className="group relative flex items-center justify-between p-4 border border-gray-200/50 dark:border-gray-700/50 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 bg-white/50 dark:bg-gray-800/30 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+                    onClick={() => router.push(`/datasets/${dataset.id}`)}
+                  >
+                    {/* 左侧装饰条 */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    
+                    <div className="flex-1 pl-2">
+                      <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-1.5">
+                        {dataset.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-4">
+                        <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800">
+                          <Image className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                          <span className="font-medium">{dataset.imageCount}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800">
+                          <Tag className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                          <span className="font-medium">{dataset.annotationCount}</span>
+                        </span>
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" className="ml-4 group-hover:border-blue-500 group-hover:bg-blue-500 group-hover:text-white dark:group-hover:border-blue-400 dark:group-hover:bg-blue-400 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Button>
+                  </div>
+                ))
+              )}
+              <div className="text-center pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
                 <Button 
                   variant="outline" 
                   onClick={() => router.push('/datasets')}
+                  className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-800/30 dark:hover:to-indigo-800/30 border-2 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   View All Datasets
+                  <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>YOLO Format Support</CardTitle>
-              <CardDescription>Platform focused on YOLO format dataset processing</CardDescription>
+          <Card className="relative border-0 shadow-xl bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-800/50 dark:to-purple-900/10 backdrop-blur-sm overflow-hidden">
+            {/* 装饰性背景 */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-purple-200/20 dark:bg-purple-800/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+            
+            <CardHeader className="relative pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 shadow-md">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">YOLO Format Support</CardTitle>
+                  <CardDescription className="mt-0.5 text-gray-600 dark:text-gray-400">Platform focused on YOLO format dataset processing</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="relative pt-6 space-y-4">
               <div className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium">YOLO v5/v8 Format Support</p>
-                    <p className="text-xs text-gray-500">Full support for latest YOLO format standards</p>
+                <div className="group flex items-start space-x-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-900/30 dark:to-blue-800/20 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-300">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <div className="w-3.5 h-3.5 rounded-full bg-white"></div>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">YOLO v5/v8 Format Support</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Full support for latest YOLO format standards</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium">Automated Annotation Tools</p>
-                    <p className="text-xs text-gray-500">Efficient bounding box annotation interface</p>
+                <div className="group flex items-start space-x-4 p-4 rounded-xl bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-900/30 dark:to-green-800/20 border border-green-200/50 dark:border-green-700/50 hover:shadow-md transition-all duration-300">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-green-500 to-green-600 shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <div className="w-3.5 h-3.5 rounded-full bg-white"></div>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">Automated Annotation Tools</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Efficient bounding box annotation interface</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-purple-500 mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium">Dataset Management</p>
-                    <p className="text-xs text-gray-500">Organize and manage your datasets</p>
+                <div className="group flex items-start space-x-4 p-4 rounded-xl bg-gradient-to-r from-purple-50 to-purple-100/50 dark:from-purple-900/30 dark:to-purple-800/20 border border-purple-200/50 dark:border-purple-700/50 hover:shadow-md transition-all duration-300">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <div className="w-3.5 h-3.5 rounded-full bg-white"></div>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">Dataset Management</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Organize and manage your datasets</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium">MinIO S3 Storage</p>
-                    <p className="text-xs text-gray-500">Fast and reliable large file uploads</p>
+                <div className="group flex items-start space-x-4 p-4 rounded-xl bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-900/30 dark:to-orange-800/20 border border-orange-200/50 dark:border-orange-700/50 hover:shadow-md transition-all duration-300">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <div className="w-3.5 h-3.5 rounded-full bg-white"></div>
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">MinIO S3 Storage</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">Fast and reliable large file uploads</p>
                   </div>
                 </div>
               </div>
               
-              <div className="pt-4 border-t">
+              <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                     Start your YOLO dataset annotation journey
                   </p>
-                  <Button onClick={() => router.push('/upload')} className="w-full">
+                  <Button 
+                    onClick={() => router.push('/upload')} 
+                    className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Your First Dataset
                   </Button>

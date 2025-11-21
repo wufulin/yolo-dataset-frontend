@@ -204,13 +204,15 @@ export default function DatasetsPage() {
                 Manage all your datasets, images, and annotations in one place
               </p>
             </div>
-            <Button 
-              onClick={handleCreateDataset} 
-              className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-semibold px-6 py-2.5 rounded-lg"
-            >
-              <Plus className="h-5 w-5" />
-              <span>Create Dataset</span>
-            </Button>
+            <div className="flex-shrink-0">
+              <Button 
+                onClick={handleCreateDataset} 
+                className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-semibold px-6 py-2.5 rounded-lg"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Create Dataset</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -365,7 +367,6 @@ export default function DatasetsPage() {
                           <span className="group-hover/btn:translate-x-1 transition-transform duration-200 inline-block">
                             View Dataset
                           </span>
-                          <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform duration-200" />
                         </Button>
                       </div>
                     </CardContent>
