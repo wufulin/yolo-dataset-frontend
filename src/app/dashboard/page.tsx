@@ -189,7 +189,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Datasets</CardTitle>
@@ -225,19 +225,6 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold">{stats.annotationCount.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 +432 from last week
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Storage Used</CardTitle>
-              <div className="h-4 w-4 text-muted-foreground">💾</div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.storageUsed}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.storageTotal} total • {stats.storagePercentage.toFixed(1)}% used
               </p>
             </CardContent>
           </Card>

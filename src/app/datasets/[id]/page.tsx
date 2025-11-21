@@ -9,7 +9,8 @@ import {
   Image as ImageIcon, 
   Tag, 
   Settings,
-  Filter
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatasetResponse } from '@/types/dataset';
@@ -45,12 +46,19 @@ export default function DatasetDetailPage() {
   const [dataset, setDataset] = useState<DatasetResponse | null>(null);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     loadDatasetDetail();
-    loadImages();
+    setCurrentPage(1); // 重置页码当数据集变化时
   }, [datasetId]);
+
+  useEffect(() => {
+    loadImages();
+  }, [datasetId, currentPage]);
 
   const loadDatasetDetail = async () => {
     try {
@@ -77,7 +85,7 @@ export default function DatasetDetailPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/v1/datasets/${datasetId}/images?page=1&page_size=100`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/datasets/${datasetId}/images?page=${currentPage}&page_size=${pageSize}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
         },
@@ -89,6 +97,16 @@ export default function DatasetDetailPage() {
 
       const data = await response.json();
       setImages(data.items || []);
+      
+      // 处理分页信息
+      if (data.pagination) {
+        setTotal(data.pagination.total || 0);
+        setTotalPages(data.pagination.pages || 0);
+      } else if (data.total !== undefined) {
+        // 如果没有 pagination 对象，尝试从 data 中获取
+        setTotal(data.total || 0);
+        setTotalPages(Math.ceil((data.total || 0) / pageSize));
+      }
     } catch (error) {
       console.error('Failed to load images:', error);
       toast.error('Failed to load images');
@@ -97,19 +115,10 @@ export default function DatasetDetailPage() {
     }
   };
 
-  const handleImageSelect = (imageId: string) => {
-    setSelectedImages(prev => 
-      prev.includes(imageId) 
-        ? prev.filter(id => id !== imageId)
-        : [...prev, imageId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedImages.length === images.length) {
-      setSelectedImages([]);
-    } else {
-      setSelectedImages(images.map(img => img.id));
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -203,7 +212,7 @@ export default function DatasetDetailPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Images</CardTitle>
@@ -233,37 +242,7 @@ export default function DatasetDetailPage() {
               <div className="text-2xl font-bold">{dataset.class_names.length}</div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Annotated Images</CardTitle>
-              <Tag className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">
-                0% Complete
-              </p>
-            </CardContent>
-          </Card>
         </div>
-
-        {/* Control Bar */}
-        <Card className="mb-6">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-end space-x-2">
-              {selectedImages.length > 0 && (
-                <Button variant="outline" size="sm">
-                  Batch Annotate ({selectedImages.length})
-                </Button>
-              )}
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Image List */}
         <Card>
@@ -272,16 +251,9 @@ export default function DatasetDetailPage() {
               <div>
                 <CardTitle>Image List</CardTitle>
                 <CardDescription>
-                  Total {images.length} images, {selectedImages.length} selected
+                  Total {total.toLocaleString()} images • Page {currentPage} of {totalPages || 1}
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAll}
-              >
-                {selectedImages.length === images.length ? 'Deselect All' : 'Select All'}
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -291,14 +263,6 @@ export default function DatasetDetailPage() {
                   key={image.id} 
                   className="flex items-center space-x-4 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  {/* Checkbox */}
-                  <input
-                    type="checkbox"
-                    checked={selectedImages.includes(image.id)}
-                    onChange={() => handleImageSelect(image.id)}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  
                   {/* Thumbnail */}
                   <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
                     <img
@@ -345,6 +309,66 @@ export default function DatasetDetailPage() {
                 </div>
               ))}
             </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, total)} of {total} images
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="flex items-center space-x-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Previous</span>
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          disabled={loading}
+                          className="min-w-[40px]"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading}
+                    className="flex items-center space-x-1"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
