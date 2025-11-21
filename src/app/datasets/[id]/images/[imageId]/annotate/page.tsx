@@ -325,24 +325,30 @@ export default function AnnotateImagePage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+      <header className="relative bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        {/* 装饰性背景元素 */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-200 dark:bg-blue-900/20 rounded-full blur-3xl opacity-30"></div>
+          <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-200 dark:bg-purple-900/20 rounded-full blur-3xl opacity-30"></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center space-x-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.back()}
-                className="flex items-center space-x-2"
+                className="group relative flex items-center space-x-2 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-gray-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 text-gray-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-300 shadow-sm hover:shadow-lg font-semibold px-4 py-2"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
                 <span>Back</span>
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-400 dark:via-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
                   Image Annotation - {image.filename}
                 </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                   Dataset: {datasetId} • {annotations.length} annotations
                 </p>
               </div>
@@ -352,23 +358,26 @@ export default function AnnotateImagePage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex h-[calc(100vh-73px)]">
+      <main className="flex h-[calc(100vh-73px)] bg-gray-50 dark:bg-gray-900">
         {/* Left Toolbar */}
-        <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
+        <div className="w-72 bg-white dark:bg-gray-800/70 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto shadow-xl">
           <div className="space-y-6">
             {/* Class Selection */}
             <div>
-              <h3 className="font-medium mb-3">Annotation Classes</h3>
-              <div className="space-y-1">
+              <h3 className="font-semibold mb-3 text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <Square className="h-4 w-4 text-blue-500" />
+                Annotation Classes
+              </h3>
+              <div className="space-y-2">
                 {classes.length > 0 ? (
                   classes.map((classInfo) => (
                     <button
                       key={classInfo.id}
                       onClick={() => setSelectedClass(classInfo)}
-                      className={`w-full text-left p-2 rounded text-sm ${
+                      className={`w-full text-left p-3 rounded-lg text-sm border transition-all duration-200 ${
                         selectedClass?.id === classInfo.id
-                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 shadow-md'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700/40'
                       }`}
                     >
                       <div className="flex items-center space-x-2">
@@ -390,18 +399,21 @@ export default function AnnotateImagePage() {
 
             {/* View Control */}
             <div>
-              <h3 className="font-medium mb-3">View Control</h3>
+              <h3 className="font-semibold mb-3 text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <Eye className="h-4 w-4 text-purple-500" />
+                View Control
+              </h3>
               <div className="space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full justify-start"
+                  className="w-full justify-start border-2 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 shadow-sm"
                   onClick={() => setShowAnnotations(!showAnnotations)}
                 >
                   {showAnnotations ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
                   {showAnnotations ? 'Hide Annotations' : 'Show Annotations'}
                 </Button>
-                <div className="text-sm text-gray-600 dark:text-gray-300">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
                   Zoom: {(scale * 100).toFixed(0)}%
                 </div>
               </div>
@@ -409,7 +421,10 @@ export default function AnnotateImagePage() {
 
             {/* Annotation List */}
             <div>
-              <h3 className="font-medium mb-3">Annotations ({annotations.length})</h3>
+              <h3 className="font-semibold mb-3 text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <Type className="h-4 w-4 text-green-500" />
+                Annotations ({annotations.length})
+              </h3>
               <div className="space-y-1">
                 {annotations.length > 0 ? (
                   annotations.map((annotation) => {
@@ -417,10 +432,10 @@ export default function AnnotateImagePage() {
                     return (
                       <div
                         key={annotation.id}
-                        className={`p-2 rounded border cursor-pointer ${
+                        className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
                           selectedAnnotation === annotation.id
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : 'border-gray-200 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md'
+                            : 'border-gray-200 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700/60'
                         }`}
                         onClick={() => setSelectedAnnotation(annotation.id)}
                       >
@@ -462,7 +477,7 @@ export default function AnnotateImagePage() {
 
         {/* Right Canvas Area */}
         <div className="flex-1 relative">
-          <div className="h-full w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
+          <div className="h-full w-full overflow-hidden bg-gray-100 dark:bg-gray-900 shadow-inner">
             <canvas
               ref={canvasRef}
               width={800}

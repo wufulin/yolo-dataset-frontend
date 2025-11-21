@@ -41,6 +41,13 @@ export default function DatasetsPage() {
 
       const data = await response.json();
       const items = data.items || [];
+      
+      // 调试：检查第一个数据项的字段
+      if (items.length > 0) {
+        console.log('First dataset item keys:', Object.keys(items[0]));
+        console.log('First dataset item:', items[0]);
+      }
+      
       setDatasets(items);
       
       // 处理分页信息 - 支持多种可能的 API 响应格式
@@ -106,7 +113,12 @@ export default function DatasetsPage() {
     router.push('/upload');
   };
 
-  const handleViewDataset = (datasetId: string) => {
+  const handleViewDataset = (datasetId: string | undefined) => {
+    if (!datasetId) {
+      console.error('Dataset ID is undefined');
+      toast.error('Invalid dataset ID');
+      return;
+    }
     router.push(`/datasets/${datasetId}`);
   };
 
@@ -311,10 +323,28 @@ export default function DatasetsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {datasets.map((dataset) => (
+                {datasets.map((dataset) => {
+                  // 支持多种可能的 ID 字段名
+                  const datasetId = (dataset as any).id || (dataset as any)._id || (dataset as any).dataset_id;
+                  
+                  if (!datasetId) {
+                    console.error('Dataset missing ID field:', dataset);
+                    return null;
+                  }
+                  
+                  return (
                   <Card 
-                    key={dataset.id} 
-                    className="group relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-xl transition-all duration-300 flex flex-col bg-white dark:bg-gray-800/50 backdrop-blur-sm"
+                    key={datasetId}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleViewDataset(datasetId)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleViewDataset(datasetId);
+                      }
+                    }}
+                    className="group relative overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-xl transition-all duration-300 flex flex-col bg-white dark:bg-gray-800/50 backdrop-blur-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     {/* 装饰性渐变背景 */}
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -361,7 +391,10 @@ export default function DatasetsPage() {
                       <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                         <Button
                           size="sm"
-                          onClick={() => handleViewDataset(dataset.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewDataset(datasetId);
+                          }}
                           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium group/btn"
                         >
                           <span className="group-hover/btn:translate-x-1 transition-transform duration-200 inline-block">
@@ -371,7 +404,8 @@ export default function DatasetsPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
             
