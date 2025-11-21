@@ -347,22 +347,6 @@ export default function AnnotateImagePage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset View
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleZoomOut}>
-                <ZoomOut className="h-4 w-4 mr-2" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleZoomIn}>
-                <ZoomIn className="h-4 w-4 mr-2" />
-              </Button>
-              <Button onClick={handleSave} className="flex items-center space-x-2">
-                <Save className="h-4 w-4" />
-                <span>Save</span>
-              </Button>
-            </div>
           </div>
         </div>
       </header>
@@ -372,22 +356,6 @@ export default function AnnotateImagePage() {
         {/* Left Toolbar */}
         <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
           <div className="space-y-6">
-            {/* Tool Selection */}
-            <div>
-              <h3 className="font-medium mb-3">Annotation Tools</h3>
-              <div className="space-y-2">
-                <Button
-                  variant={currentTool === 'bbox' ? 'default' : 'outline'}
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => setCurrentTool('bbox')}
-                >
-                  <Square className="h-4 w-4 mr-2" />
-                  Bounding Box
-                </Button>
-              </div>
-            </div>
-
             {/* Class Selection */}
             <div>
               <h3 className="font-medium mb-3">Annotation Classes</h3>

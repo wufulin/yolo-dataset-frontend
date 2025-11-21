@@ -17,9 +17,6 @@ export default function HomePage() {
             Supports batch upload, intelligent annotation, team collaboration and more.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="text-lg px-8">
-              <a href="/auth/register">Get Started</a>
-            </Button>
             <Button asChild variant="outline" size="lg" className="text-lg px-8">
               <a href="/auth/login">Sign In</a>
             </Button>
@@ -27,7 +24,7 @@ export default function HomePage() {
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid md:grid-cols-2 gap-8 mb-16">
           <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-xl">🚀 Fast Upload</CardTitle>
@@ -48,18 +45,6 @@ export default function HomePage() {
             <CardContent>
               <p className="text-gray-600 dark:text-gray-300">
                 Complete YOLO annotation tools with rectangle and polygon support, visual interface with intuitive operation.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-xl">👥 Team Collaboration</CardTitle>
-              <CardDescription>Multi-user collaboration with real-time synchronization</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                Support team member collaborative annotation with real-time synchronization and configurable permissions and roles.
               </p>
             </CardContent>
           </Card>
@@ -125,22 +110,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* CTA Section */}
-        <div className="text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Start Your Annotation Journey?</h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-            Register now and start creating and annotating your YOLO datasets
-          </p>
-          <Button asChild size="lg" className="text-lg px-8">
-            <a href="/auth/register">Get Started Free</a>
-          </Button>
-        </div>
       </div>
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-8 mt-16">
         <div className="container mx-auto px-4 text-center">
-          <p>&copy; 2024 YOLO Dataset Annotation Platform. Developed by MiniMax Agent.</p>
+          <p>&copy; 2024 YOLO Dataset Annotation Platform.</p>
         </div>
       </footer>
     </div>

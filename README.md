@@ -245,7 +245,5 @@ npm run lint
 5. Write clear documentation and comments
 
 ---
-
-**Developer**: MiniMax Agent  
 **Version**: 1.0.0  
 **License**: MIT

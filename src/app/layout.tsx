@@ -20,9 +20,9 @@ export const metadata: Metadata = {
   title: "YOLO Dataset Annotation Platform",
   description: "Professional YOLO dataset annotation and management platform",
   keywords: ["YOLO", "Dataset", "Annotation", "Machine Learning", "Computer Vision"],
-  authors: [{ name: "MiniMax Agent" }],
-  creator: "MiniMax Agent",
-  publisher: "MiniMax Agent",
+  authors: [{ name: "Franklin" }],
+  creator: "Franklin",
+  publisher: "Franklin",
   openGraph: {
     title: "YOLO Dataset Annotation Platform",
     description: "Professional YOLO dataset annotation and management platform",

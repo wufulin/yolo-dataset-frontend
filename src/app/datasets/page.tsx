@@ -261,7 +261,7 @@ export default function DatasetsPage() {
                       <div className="pt-4">
                         <Button
                           size="sm"
-                          onClick={() => handleViewDataset(dataset.id)}
+                          onClick={() => handleViewDataset(dataset._id)}
                           className="w-full"
                         >
                           View Dataset

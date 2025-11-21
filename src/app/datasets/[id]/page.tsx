@@ -9,8 +9,6 @@ import {
   Image as ImageIcon, 
   Tag, 
   Settings,
-  Download,
-  Upload,
   Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -197,16 +195,6 @@ export default function DatasetDetailPage() {
                   {dataset.description}
                 </p>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Images
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export YOLO
-              </Button>
             </div>
           </div>
         </div>

@@ -8,7 +8,18 @@ import { ArrowLeft, Upload as UploadIcon } from 'lucide-react';
 import UppyUpload from '@/components/upload/UppyUpload';
 import { toast } from 'sonner';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+
 type DatasetType = 'Classify' | 'Detect' | 'OBB' | 'Segment' | 'POSE';
+
+// 映射前端类型到后端类型
+const datasetTypeMap: Record<DatasetType, string> = {
+  'Classify': 'classify',
+  'Detect': 'detect',
+  'OBB': 'obb',
+  'Segment': 'segment',
+  'POSE': 'pose'
+};
 
 interface UploadProgress {
   percentage: number;
@@ -26,33 +37,7 @@ export default function UploadPage() {
   const [datasetId, setDatasetId] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  const handleCreateDataset = async () => {
-    if (!datasetName.trim()) {
-      toast.error('Please enter dataset name');
-      return;
-    }
-
-    try {
-      // Mock create dataset
-      const newDatasetId = Date.now().toString();
-      const newDataset = {
-        id: newDatasetId,
-        name: datasetName,
-        description: datasetDescription,
-        type: datasetType,
-        created_at: new Date().toISOString(),
-      };
-
-      // Should call API to create dataset
-      console.log('Creating dataset:', newDataset);
-
-      setDatasetId(newDatasetId);
-      toast.success(`Dataset "${datasetName}" created successfully`);
-    } catch (error) {
-      toast.error('Failed to create dataset');
-    }
-  };
+  const [uploadComplete, setUploadComplete] = useState(false);
 
   const handleUploadProgress = (progress: UploadProgress) => {
     setUploadProgress(progress);
@@ -60,13 +45,67 @@ export default function UploadPage() {
       setIsUploading(true);
     } else if (progress.percentage === 100) {
       setIsUploading(false);
+      setUploadComplete(true);
     }
   };
 
-  const handleUploadComplete = (result: any) => {
-    toast.success('File upload complete, processing...');
+  const handleUploadComplete = async (result: any) => {
     setIsUploading(false);
-    // Add file processing logic here
+    setUploadComplete(true);
+    
+    // Check if dataset was already created by backend
+    // Backend process_dataset creates dataset for ZIP files and returns dataset_id
+    if (result && result.dataset_id) {
+      // Dataset already created by backend
+      setDatasetId(result.dataset_id);
+      toast.success(`Dataset "${datasetName}" created successfully!`);
+      
+      // 跳转到数据集列表页
+      setTimeout(() => {
+        router.push('/datasets');
+      }, 1500);
+    } else if (result && result.temp_object_name) {
+      // Single file uploaded to temp location, need to create dataset manually
+      // This case should not happen with current flow, but keep as fallback
+      if (datasetName.trim() && datasetType) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${API_BASE_URL}/api/v1/datasets`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+            },
+            body: JSON.stringify({
+              name: datasetName.trim(),
+              description: datasetDescription || undefined,
+              dataset_type: datasetTypeMap[datasetType],
+              class_names: []
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to create dataset');
+          }
+
+          const data = await response.json();
+          setDatasetId(data.id);
+          toast.success(`Dataset "${datasetName}" created successfully!`);
+          
+          // 跳转到数据集列表页
+          setTimeout(() => {
+            router.push('/datasets');
+          }, 1500);
+        } catch (error: any) {
+          console.error('Failed to create dataset:', error);
+          toast.error(error.message || 'Failed to create dataset');
+        }
+      }
+    } else {
+      // Upload completed but no dataset info
+      toast.success('File upload complete!');
+    }
   };
 
   const formatBytes = (bytes: number): string => {
@@ -107,24 +146,24 @@ export default function UploadPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left side: Create dataset */}
           <div className="lg:col-span-1">
-            {/* Create New Dataset */}
+            {/* Dataset Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Create New Dataset</CardTitle>
+                <CardTitle>Dataset Information</CardTitle>
                 <CardDescription>
-                  Create a new dataset to start uploading
+                  Enter dataset information before uploading files
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Input
-                  label="Dataset Name"
+                  label="Dataset Name *"
                   value={datasetName}
                   onChange={(e) => setDatasetName(e.target.value)}
                   placeholder="Enter dataset name"
                 />
                 
                 <Select
-                  label="Dataset Type"
+                  label="Dataset Type *"
                   value={datasetType}
                   onChange={(e) => setDatasetType(e.target.value as DatasetType)}
                   options={[
@@ -149,24 +188,6 @@ export default function UploadPage() {
                   />
                 </div>
                 
-                <Button
-                  onClick={handleCreateDataset}
-                  className="w-full"
-                  disabled={!datasetName.trim()}
-                >
-                  Create Dataset
-                </Button>
-
-                {datasetId && (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
-                    <p className="text-sm text-green-800 dark:text-green-200 font-medium">
-                      ✓ Dataset Created: {datasetName}
-                    </p>
-                    <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                      Type: {datasetType}
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -180,14 +201,24 @@ export default function UploadPage() {
                   <span>Upload Files</span>
                 </CardTitle>
                 <CardDescription>
-                  Supports JPG, PNG, WebP and other image formats, max 100MB per file
+                  Supports JPG, PNG, WebP and other image formats, max 100GB per file
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <UppyUpload
-                  datasetId={datasetId}
+                  datasetInfo={
+                    datasetName.trim() && datasetType
+                      ? {
+                          name: datasetName.trim(),
+                          description: datasetDescription || '',
+                          dataset_type: datasetTypeMap[datasetType],
+                        }
+                      : null
+                  }
                   onUploadComplete={handleUploadComplete}
                   onProgress={handleUploadProgress}
+                  buttonText="Start Upload And Create"
+                  requireDatasetInfo={true}
                 />
                 
                 {/* Upload Progress Bar */}
@@ -222,12 +253,11 @@ export default function UploadPage() {
                   </div>
                 )}
                 
-                {/* Dataset Info */}
-                {datasetId && (
-                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Uploading to: <span className="font-medium text-gray-900 dark:text-gray-100">{datasetName}</span>
-                      {datasetType && <span className="ml-2 text-gray-500">({datasetType})</span>}
+                {/* Upload Status */}
+                {uploadComplete && datasetId && (
+                  <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                    <p className="text-xs text-green-800 dark:text-green-200">
+                      ✓ Files uploaded and dataset created successfully!
                     </p>
                   </div>
                 )}
@@ -243,13 +273,13 @@ export default function UploadPage() {
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Supported formats: JPG, JPEG, PNG, WebP, GIF
+                    Supported formats: YOLO Format with ZIP Archive
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">
-                    File size limit: Max 100MB per file
+                    File size limit: Max 100GB per file
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">

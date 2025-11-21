@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import { getCurrentUser, clearAuthState } from '@/lib/auth-simple';
 import Navigation from '@/components/layout/Navigation';
-import { Plus, FolderOpen, Upload, Tag, LogOut, Settings } from 'lucide-react';
+import { Plus, FolderOpen, Tag, LogOut, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DashboardStats {
@@ -13,6 +13,20 @@ interface DashboardStats {
   imageCount: number;
   annotationCount: number;
   storageUsage: string;
+  storageUsed: string;
+  storageTotal: string;
+  storagePercentage: number;
+}
+
+interface StorageInfo {
+  used_bytes: number;
+  used_formatted: string;
+  available_bytes: number;
+  available_formatted: string;
+  total_bytes: number;
+  total_formatted: string;
+  usage_percentage: number;
+  object_count: number;
 }
 
 interface RecentDataset {
@@ -28,7 +42,10 @@ export default function DashboardPage() {
     datasetCount: 0,
     imageCount: 0,
     annotationCount: 0,
-    storageUsage: '0 GB'
+    storageUsage: '0 GB',
+    storageUsed: '0 B',
+    storageTotal: '0 B',
+    storagePercentage: 0
   });
   const [recentDatasets, setRecentDatasets] = useState<RecentDataset[]>([]);
   const [user, setUser] = useState(getCurrentUser());
@@ -39,22 +56,74 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      // Mock load dashboard data
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      const token = localStorage.getItem('token');
       
-      setStats({
-        datasetCount: 12,
-        imageCount: 1245,
-        annotationCount: 3678,
-        storageUsage: '2.3 GB'
-      });
+      // Load storage info
+      try {
+        const storageResponse = await fetch(`${API_BASE_URL}/api/v1/base-info/storage`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+          },
+        });
 
-      setRecentDatasets([
-        { id: '1', name: 'COCO Training Dataset', imageCount: 234, annotationCount: 1456 },
-        { id: '2', name: 'Vehicle Detection Dataset', imageCount: 567, annotationCount: 2134 },
-        { id: '3', name: 'Face Recognition Training Set', imageCount: 890, annotationCount: 3456 }
-      ]);
+        if (storageResponse.ok) {
+          const storageData: StorageInfo = await storageResponse.json();
+          setStats(prev => ({
+            ...prev,
+            storageUsed: storageData.used_formatted,
+            storageTotal: storageData.total_formatted,
+            storageUsage: `${storageData.used_formatted} / ${storageData.total_formatted}`,
+            storagePercentage: storageData.usage_percentage
+          }));
+        }
+      } catch (storageError) {
+        console.error('Failed to load storage info:', storageError);
+        // Continue with other data even if storage info fails
+      }
+
+      // Load datasets list (get all datasets for statistics, first 3 for Recent Datasets)
+      try {
+        const datasetsResponse = await fetch(`${API_BASE_URL}/api/v1/datasets?page=1&page_size=100`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+          },
+        });
+
+        if (datasetsResponse.ok) {
+          const datasetsData = await datasetsResponse.json();
+          const datasets = datasetsData.items || [];
+          
+          // Calculate statistics from all datasets (same as datasets page)
+          const totalDatasets = datasets.length;
+          const totalImages = datasets.reduce((sum: number, d: any) => sum + (d.num_images || 0), 0);
+          const totalAnnotations = datasets.reduce((sum: number, d: any) => sum + (d.num_annotations || 0), 0);
+          
+          // Update all statistics
+          setStats(prev => ({
+            ...prev,
+            datasetCount: totalDatasets,
+            imageCount: totalImages,
+            annotationCount: totalAnnotations
+          }));
+
+          // Convert to RecentDataset format and take only first 3
+          const recentDatasetsData = datasets.slice(0, 3).map((dataset: any) => ({
+            id: dataset.id,
+            name: dataset.name,
+            imageCount: dataset.num_images || 0,
+            annotationCount: dataset.num_annotations || 0
+          }));
+          
+          setRecentDatasets(recentDatasetsData);
+        }
+      } catch (datasetsError) {
+        console.error('Failed to load datasets:', datasetsError);
+        // Continue with empty list if datasets fail to load
+        setRecentDatasets([]);
+      }
     } catch (error) {
+      console.error('Failed to load dashboard data:', error);
       toast.error('Failed to load dashboard data');
     }
   };
@@ -68,9 +137,6 @@ export default function DashboardPage() {
   const handleQuickAction = (action: string) => {
     switch (action) {
       case 'create-dataset':
-        router.push('/upload');
-        break;
-      case 'upload':
         router.push('/upload');
         break;
       case 'view-datasets':
@@ -103,21 +169,13 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button 
               className="h-20 flex flex-col items-center justify-center space-y-2"
               onClick={() => handleQuickAction('create-dataset')}
             >
               <FolderOpen className="h-6 w-6" />
               <span>Create Dataset</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-20 flex flex-col items-center justify-center space-y-2"
-              onClick={() => handleQuickAction('upload')}
-            >
-              <Upload className="h-6 w-6" />
-              <span>Upload Files</span>
             </Button>
             <Button 
               variant="outline" 
@@ -177,9 +235,9 @@ export default function DashboardPage() {
               <div className="h-4 w-4 text-muted-foreground">💾</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.storageUsage}</div>
+              <div className="text-2xl font-bold">{stats.storageUsed}</div>
               <p className="text-xs text-muted-foreground">
-                Total limit: 10 GB
+                {stats.storageTotal} total • {stats.storagePercentage.toFixed(1)}% used
               </p>
             </CardContent>
           </Card>
