@@ -3,11 +3,10 @@ import {
   UploadProgress, 
   UploadConfig, 
   UploadEvent, 
-  UploadEventType,
   UPLOAD_CONSTANTS,
   ResumeMetadata
 } from '../types';
-import { uploadAPI } from '../lib/api';
+import { uploadApi } from '../lib/api';
 
 interface UploadState {
   // 上传统计
@@ -153,34 +152,27 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     
     try {
       // 创建上传会话
-      const sessionResponse = await uploadAPI.createSession({
-        filename: file.name,
-        file_size: file.size,
-        file_type: 'image',
-        dataset_id: datasetId,
+      const sessionResponse = await uploadApi.initiateUpload(file, datasetId, {
         chunk_size: mergedConfig.chunkSize
       });
       
-      if (sessionResponse.success) {
-        const { session_id, file_id } = sessionResponse.data;
-        
-        // 更新会话信息
-        const updatedSession = {
-          ...session,
-          fileId: file_id
-        };
-        
-        sessions.set(sessionId, updatedSession);
-        
-        set(state => ({
-          sessions: new Map(sessions)
-        }));
-        
-        return sessionId;
-      } else {
-        throw new Error(sessionResponse.error?.message || '创建上传会话失败');
-      }
-    } catch (error: any) {
+      // uploadApi.initiateUpload 返回 { upload_id, chunk_count, chunk_size }
+      const { upload_id } = sessionResponse;
+      
+      // 更新会话信息
+      const updatedSession = {
+        ...session,
+        fileId: upload_id
+      };
+      
+      sessions.set(sessionId, updatedSession);
+      
+      set({
+        sessions: new Map(sessions)
+      });
+      
+      return sessionId;
+    } catch (error: unknown) {
       // 清理失败的会话
       sessions.delete(sessionId);
       set(state => ({
@@ -192,7 +184,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
   
   startUpload: async (sessionId: string) => {
-    const { sessions, config } = get();
+    const { sessions } = get();
     const session = sessions.get(sessionId);
     
     if (!session) {
@@ -221,7 +213,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     try {
       // 开始实际的上传逻辑
       // 这里应该调用实际的上传实现
-      await simulateUpload(sessionId, config);
+      await simulateUpload(sessionId);
       
       // 上传完成
       get().onUploadEvent({
@@ -231,12 +223,13 @@ export const useUploadStore = create<UploadState>((set, get) => ({
         timestamp: Date.now()
       });
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 上传失败
+      const errorMessage = error instanceof Error ? error.message : '上传失败';
       get().onUploadEvent({
         type: 'upload_failed',
         sessionId,
-        data: { error: error.message },
+        data: { error: errorMessage },
         timestamp: Date.now()
       });
     }
@@ -314,7 +307,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   },
   
   retryUpload: (sessionId: string) => {
-    const { sessions, failed } = get();
+    const { failed } = get();
     
     // 从失败集合中移除
     failed.delete(sessionId);
@@ -441,11 +434,17 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     resumeMetadata.set(sessionId, metadata);
     set({ resumeMetadata: new Map(resumeMetadata) });
     
-    // 保存到本地存储
+    // 保存到本地存储（需要序列化 Date 和 Map）
     try {
+      const serialized = {
+        ...metadata,
+        createdAt: metadata.createdAt.toISOString(),
+        lastModified: metadata.lastModified.toISOString(),
+        chunks: Object.fromEntries(metadata.chunks)
+      };
       localStorage.setItem(
         `yolo_upload_resume_${sessionId}`,
-        JSON.stringify(metadata)
+        JSON.stringify(serialized)
       );
     } catch (error) {
       console.error('Failed to save resume metadata:', error);
@@ -464,7 +463,14 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     try {
       const stored = localStorage.getItem(`yolo_upload_resume_${sessionId}`);
       if (stored) {
-        const metadata = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // 恢复 Date 对象和 Map 对象
+        const metadata: ResumeMetadata = {
+          ...parsed,
+          createdAt: new Date(parsed.createdAt),
+          lastModified: new Date(parsed.lastModified),
+          chunks: new Map(parsed.chunks ? Object.entries(parsed.chunks).map(([key, value]) => [Number(key), value]) : [])
+        };
         resumeMetadata.set(sessionId, metadata);
         set({ resumeMetadata: new Map(resumeMetadata) });
         return metadata;
@@ -492,7 +498,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   optimizeConfigForNetwork: () => {
     const { networkStatus, config } = get();
     
-    let optimizedConfig = { ...config };
+    const optimizedConfig = { ...config };
     
     // 根据网络类型调整配置
     switch (networkStatus.effectiveType) {
@@ -529,7 +535,7 @@ function generateSessionId(): string {
 }
 
 // 模拟上传过程（实际项目中需要替换为真实的上传实现）
-async function simulateUpload(sessionId: string, config: UploadConfig) {
+async function simulateUpload(sessionId: string) {
   const { onUploadEvent } = useUploadStore.getState();
   
   const session = useUploadStore.getState().getUploadProgress(sessionId);

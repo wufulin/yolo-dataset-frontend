@@ -1,6 +1,5 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { AnnotationClass } from '@/types';
 
 // ====================
 // 样式工具
@@ -465,10 +464,10 @@ export function sortBy<T>(array: T[], key: keyof T, direction: 'asc' | 'desc' = 
  */
 export function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
-  if (obj instanceof Date) return new Date(obj.getTime()) as any;
-  if (obj instanceof Array) return obj.map(item => deepClone(item)) as any;
+  if (obj instanceof Date) return new Date(obj.getTime()) as T;
+  if (obj instanceof Array) return obj.map(item => deepClone(item)) as T;
   if (typeof obj === 'object') {
-    const clonedObj = {} as { [key: string]: any };
+    const clonedObj = {} as { [key: string]: unknown };
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
         clonedObj[key] = deepClone(obj[key]);
@@ -482,15 +481,15 @@ export function deepClone<T>(obj: T): T {
 /**
  * 对象属性是否存在
  */
-export function hasProperty(obj: any, path: string): boolean {
+export function hasProperty(obj: unknown, path: string): boolean {
   const keys = path.split('.');
-  let current = obj;
+  let current: unknown = obj;
   
   for (const key of keys) {
-    if (current == null || !current.hasOwnProperty(key)) {
+    if (current == null || typeof current !== 'object' || !(key in current)) {
       return false;
     }
-    current = current[key];
+    current = (current as Record<string, unknown>)[key];
   }
   
   return true;
@@ -499,15 +498,15 @@ export function hasProperty(obj: any, path: string): boolean {
 /**
  * 获取对象属性值
  */
-export function getProperty(obj: any, path: string, defaultValue?: any): any {
+export function getProperty(obj: unknown, path: string, defaultValue?: unknown): unknown {
   const keys = path.split('.');
-  let current = obj;
+  let current: unknown = obj;
   
   for (const key of keys) {
-    if (current == null || !current.hasOwnProperty(key)) {
+    if (current == null || typeof current !== 'object' || !(key in current)) {
       return defaultValue;
     }
-    current = current[key];
+    current = (current as Record<string, unknown>)[key];
   }
   
   return current;
@@ -516,16 +515,18 @@ export function getProperty(obj: any, path: string, defaultValue?: any): any {
 /**
  * 设置对象属性值
  */
-export function setProperty(obj: any, path: string, value: any): void {
+export function setProperty(obj: Record<string, unknown>, path: string, value: unknown): void {
   const keys = path.split('.');
-  let current = obj;
+  let current: Record<string, unknown> = obj;
   
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i];
-    if (!current.hasOwnProperty(key) || typeof current[key] !== 'object') {
+    if (!current.hasOwnProperty(key) || typeof current[key] !== 'object' || current[key] === null) {
       current[key] = {};
     }
-    current = current[key];
+    const next = current[key];
+    // 由于上面已经确保 next 是对象，这里可以安全地断言
+    current = next as Record<string, unknown>;
   }
   
   current[keys[keys.length - 1]] = value;
@@ -630,18 +631,18 @@ export async function retry<T>(
  * 并发限制
  */
 export function pLimit(concurrency: number) {
-  const queue: Array<() => Promise<any>> = [];
+  const queue: Array<() => Promise<unknown>> = [];
   let activeCount = 0;
 
   const next = () => {
     activeCount--;
     if (queue.length > 0) {
       const fn = queue.shift();
-      fn && fn();
+      fn?.();
     }
   };
 
-  const run = async (fn: () => Promise<any>, resolve: any, reject: any) => {
+  const run = async (fn: () => Promise<unknown>, resolve: (value: unknown) => void, reject: (reason?: unknown) => void) => {
     activeCount++;
     try {
       const result = await fn();
@@ -653,7 +654,7 @@ export function pLimit(concurrency: number) {
     }
   };
 
-  const enqueue = (fn: () => Promise<any>) => {
+  const enqueue = (fn: () => Promise<unknown>) => {
     return new Promise((resolve, reject) => {
       const task = () => run(fn, resolve, reject);
       if (activeCount < concurrency) {
@@ -674,7 +675,7 @@ export function pLimit(concurrency: number) {
 /**
  * 安全地设置localStorage
  */
-export function setLocalStorage(key: string, value: any): boolean {
+export function setLocalStorage(key: string, value: unknown): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
@@ -717,7 +718,7 @@ export function removeLocalStorage(key: string): boolean {
 /**
  * 构建查询参数
  */
-export function buildQueryString(params: Record<string, any>): string {
+export function buildQueryString(params: Record<string, unknown>): string {
   const query = new URLSearchParams();
   
   for (const [key, value] of Object.entries(params)) {
@@ -762,7 +763,7 @@ export function parseQueryString(queryString: string): Record<string, string | s
 /**
  * 防抖函数
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
   immediate?: boolean
@@ -787,7 +788,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * 节流函数
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -795,7 +796,7 @@ export function throttle<T extends (...args: any[]) => any>(
   
   return function executedFunction(...args: Parameters<T>) {
     if (!inThrottle) {
-      func.apply(this, args);
+      func(...args);
       inThrottle = true;
       setTimeout(() => inThrottle = false, limit);
     }

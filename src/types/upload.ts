@@ -9,7 +9,7 @@ export interface CreateUploadSessionRequest {
   chunk_size?: number; // 分片大小（字节）
   content_type?: string; // 文件MIME类型
   checksum?: string; // SHA256校验和
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // 上传会话响应
@@ -43,7 +43,7 @@ export interface ChunkUploadResponse {
 export interface CompleteUploadRequest {
   session_id: string;
   chunk_hashes?: string[]; // 各分片的哈希值
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // 上传完成响应
@@ -142,6 +142,16 @@ export interface UploadConfig {
   maxChunkSize: number; // 最大分片大小
 }
 
+// 上传选项（用于 API 调用）
+export interface UploadOptions {
+  chunk_size?: number; // 分片大小（字节）
+  max_concurrent?: number; // 最大并发数
+  max_retries?: number; // 最大重试次数
+  retry_delay?: number; // 重试延迟（毫秒）
+  enable_resume?: boolean; // 启用断点续传
+  enable_progress?: boolean; // 启用进度追踪
+}
+
 // 文件验证规则
 export interface FileValidationRule {
   type: 'size' | 'type' | 'name' | 'count';
@@ -195,7 +205,7 @@ export type UploadEventType =
 export interface UploadEvent {
   type: UploadEventType;
   sessionId: string;
-  data?: any;
+  data?: Record<string, unknown>;
   timestamp: number;
 }
 

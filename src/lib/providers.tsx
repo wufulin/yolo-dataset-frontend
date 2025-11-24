@@ -9,10 +9,13 @@ import { Toaster } from 'sonner';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: unknown) => {
         // 401错误不重试
-        if (error?.response?.status === 401) {
-          return false;
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response?: { status?: number } };
+          if (axiosError.response?.status === 401) {
+            return false;
+          }
         }
         return failureCount < 3;
       },

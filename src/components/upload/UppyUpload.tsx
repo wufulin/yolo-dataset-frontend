@@ -18,7 +18,7 @@ interface UppyUploadProps {
     description?: string;
     dataset_type: string;
   } | null;
-  onUploadComplete?: (result: any) => void;
+  onUploadComplete?: (result: Record<string, unknown> | null) => void;
   onProgress?: (progress: { percentage: number; uploadedFiles: number; totalFiles: number; uploadedBytes: number; totalBytes: number }) => void;
   buttonText?: string;
   requireDatasetInfo?: boolean;
@@ -70,7 +70,7 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
   const uploadFileInChunks = useCallback(async (
     file: File,
     onFileProgress?: (uploadedBytes: number, totalBytes: number) => void
-  ): Promise<void> => {
+  ): Promise<Record<string, unknown>> => {
     const token = localStorage.getItem('token');
     const totalSize = file.size;
     const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
@@ -193,11 +193,11 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
       const completeData = await completeResponse.json();
       console.log('Upload completed:', completeData);
       return completeData;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload error in uploadFileInChunks:', error);
       throw error;
     }
-  }, [datasetInfo, onProgress]);
+  }, [datasetInfo]);
 
   const handleUpload = useCallback(async () => {
     const files = uppy.getFiles();
@@ -210,12 +210,10 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
     toast.info(`Starting upload of ${files.length} file(s)...`);
 
     let uploadedFiles = 0;
-    let totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
-    let uploadedBytes = 0;
-    const fileSizes = files.map(f => f.size || 0);
+    const totalBytes = files.reduce((sum, f) => sum + (f.size || 0), 0);
     const fileUploadedBytes: number[] = new Array(files.length).fill(0);
 
-    let lastResult: any = null;
+    let lastResult: Record<string, unknown> | null = null;
     
     // 更新进度的辅助函数
     const updateProgress = () => {
@@ -251,7 +249,7 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
           // 上传文件，并传入进度回调
           const result = await uploadFileInChunks(
             file,
-            (fileUploaded, fileTotal) => {
+            (fileUploaded) => {
               // 更新当前文件的上传字节数
               fileUploadedBytes[fileIndex] = fileUploaded;
               // 更新总进度
@@ -262,15 +260,15 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
           lastResult = result; // 保存最后一个文件的上传结果（包含 dataset_id）
           uploadedFiles++;
           fileUploadedBytes[fileIndex] = file.size || 0; // 确保文件完成时设置为完整大小
-          uploadedBytes += file.size || 0;
           
       toast.success(`File "${file.name}" uploaded successfully`);
       
           // 更新最终进度
           updateProgress();
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`Error uploading file ${uppyFile.name}:`, error);
-          toast.error(`File "${uppyFile.name}" upload failed: ${error.message || 'Unknown error'}`);
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          toast.error(`File "${uppyFile.name}" upload failed: ${message}`);
         }
       }
 
@@ -291,9 +289,10 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
       } else {
         toast.warning(`${uploadedFiles} of ${files.length} files uploaded successfully`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload error:', error);
-      toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Upload failed: ${message}`);
     }
   }, [uppy, onUploadComplete, onProgress, uploadFileInChunks]);
 
@@ -309,7 +308,7 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
     <div className="w-full">
       <Dashboard
         uppy={uppy}
-        height={400 as any}
+        height={400}
         proudlyDisplayPoweredByUppy={false}
         showRemoveButtonAfterComplete={true}
         showProgressDetails={true}
@@ -318,7 +317,6 @@ export default function UppyUpload({ datasetInfo, onUploadComplete, onProgress, 
         hidePauseResumeButton={true}
         hideCancelButton={true}
         theme="light"
-        locale={{} as any}
       />
       
       <div className="mt-4 flex justify-end">

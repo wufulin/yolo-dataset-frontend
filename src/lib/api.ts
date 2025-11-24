@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import type {
   ApiResponse,
   PaginatedResponse,
@@ -11,20 +11,15 @@ import type {
   DatasetListParams,
   DatasetStatistics,
   YOLOAnnotation,
-  BoundingBox,
   AnnotationClass,
   UploadProgress,
-  UploadChunk,
-  UploadState,
   UploadOptions,
   Image,
   ImageListParams,
   ImageDetail,
-  AnnotationListParams,
   ExportConfig,
   ImportConfig,
   CollaborationSession,
-  AuditLog,
   APIUsageStats,
 } from '@/types';
 
@@ -49,10 +44,10 @@ const apiClient: AxiosInstance = axios.create({
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
-  reject: (error: any) => void;
+  reject: (error: unknown) => void;
 }> = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);
@@ -174,18 +169,23 @@ apiClient.interceptors.response.use(
 );
 
 // 错误处理工具
-const handleApiError = (error: any): never => {
-  if (error.response) {
+const handleApiError = (error: unknown): never => {
+  // 检查是否是 axios 错误
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as { response?: { data?: { message?: string; error?: { message?: string } } } };
     // 服务器响应错误
-    const errorData = error.response.data;
+    const errorData = axiosError.response?.data;
     const errorMessage = errorData?.message || errorData?.error?.message || '服务器错误';
     throw new Error(errorMessage);
-  } else if (error.request) {
+  } else if (error && typeof error === 'object' && 'request' in error) {
     // 网络错误
     throw new Error('网络连接失败，请检查网络连接');
-  } else {
+  } else if (error instanceof Error) {
     // 其他错误
     throw new Error(error.message || '未知错误');
+  } else {
+    // 未知错误类型
+    throw new Error('未知错误');
   }
 };
 
@@ -207,7 +207,7 @@ export const authApi = {
       
       throw new Error(response.data.message || '登录失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -227,7 +227,7 @@ export const authApi = {
       
       throw new Error(response.data.message || '注册失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -246,7 +246,7 @@ export const authApi = {
       
       throw new Error(response.data.message || 'Token刷新失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -261,7 +261,7 @@ export const authApi = {
       
       throw new Error(response.data.message || '获取用户信息失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -269,7 +269,7 @@ export const authApi = {
   async logout(): Promise<void> {
     try {
       await apiClient.post('/auth/logout');
-    } catch (error) {
+    } catch {
       // 即使登出失败也清除本地token
     } finally {
       tokenManager.clearTokens();
@@ -288,7 +288,7 @@ export const datasetApi = {
 
       return response.data;
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -303,7 +303,7 @@ export const datasetApi = {
       
       throw new Error(response.data.message || '获取数据集详情失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -318,7 +318,7 @@ export const datasetApi = {
       
       throw new Error(response.data.message || '创建数据集失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -333,7 +333,7 @@ export const datasetApi = {
       
       throw new Error(response.data.message || '更新数据集失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -346,7 +346,7 @@ export const datasetApi = {
         throw new Error(response.data.message || '删除数据集失败');
       }
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -361,7 +361,7 @@ export const datasetApi = {
       
       throw new Error(response.data.message || '获取统计数据失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -376,7 +376,7 @@ export const datasetApi = {
       
       throw new Error(response.data.message || '导出数据集失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -401,7 +401,7 @@ export const datasetApi = {
       
       throw new Error(response.data.message || '导入数据集失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -417,7 +417,7 @@ export const datasetApi = {
         throw new Error(response.data.message || '分享数据集失败');
       }
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 };
@@ -433,7 +433,7 @@ export const imageApi = {
 
       return response.data;
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -448,7 +448,7 @@ export const imageApi = {
       
       throw new Error(response.data.message || '获取图像详情失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -468,7 +468,7 @@ export const imageApi = {
       
       throw new Error(response.data.message || '获取缩略图失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -481,7 +481,7 @@ export const imageApi = {
         throw new Error(response.data.message || '删除图像失败');
       }
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 };
@@ -501,7 +501,7 @@ export const annotationApi = {
       
       throw new Error(response.data.message || '获取标注失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -523,7 +523,7 @@ export const annotationApi = {
       
       throw new Error(response.data.message || '创建标注失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -546,7 +546,7 @@ export const annotationApi = {
       
       throw new Error(response.data.message || '更新标注失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -561,7 +561,7 @@ export const annotationApi = {
         throw new Error(response.data.message || '删除标注失败');
       }
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -591,7 +591,7 @@ export const annotationApi = {
       
       throw new Error(response.data.message || '批量操作标注失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -606,7 +606,7 @@ export const annotationApi = {
       
       throw new Error(response.data.message || '获取标注类失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 };
@@ -643,7 +643,7 @@ export const uploadApi = {
       
       throw new Error(response.data.message || '初始化上传失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -675,7 +675,7 @@ export const uploadApi = {
       
       throw new Error(response.data.message || '上传分片失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -700,7 +700,7 @@ export const uploadApi = {
       
       throw new Error(response.data.message || '完成上传失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -715,7 +715,7 @@ export const uploadApi = {
       
       throw new Error(response.data.message || '获取上传状态失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -728,7 +728,7 @@ export const uploadApi = {
         throw new Error(response.data.message || '取消上传失败');
       }
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 };
@@ -746,7 +746,7 @@ export const collaborationApi = {
       
       throw new Error(response.data.message || '创建协作会话失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -761,7 +761,7 @@ export const collaborationApi = {
       
       throw new Error(response.data.message || '加入协作会话失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -774,7 +774,7 @@ export const collaborationApi = {
         throw new Error(response.data.message || '离开协作会话失败');
       }
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 };
@@ -814,7 +814,7 @@ export const analyticsApi = {
       
       throw new Error(response.data.message || '获取用户统计失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 
@@ -831,7 +831,7 @@ export const analyticsApi = {
       
       throw new Error(response.data.message || '获取API使用统计失败');
     } catch (error) {
-      handleApiError(error);
+      return handleApiError(error);
     }
   },
 };

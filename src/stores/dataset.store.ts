@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Dataset, DatasetQueryParams, CreateDatasetRequest, UpdateDatasetRequest } from '../types';
-import { datasetsAPI } from '../lib/api';
+import { datasetApi } from '../lib/api';
 
 interface DatasetState {
   datasets: Dataset[];
@@ -12,8 +12,8 @@ interface DatasetState {
     limit: number;
     total: number;
     pages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
+    has_next: boolean;
+    has_prev: boolean;
   };
   filters: DatasetQueryParams;
   selectedDatasets: string[];
@@ -53,8 +53,8 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
     limit: 20,
     total: 0,
     pages: 0,
-    hasNext: false,
-    hasPrev: false
+    has_next: false,
+    has_prev: false
   },
   filters: defaultFilters,
   selectedDatasets: [],
@@ -66,21 +66,19 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
       const currentFilters = get().filters;
       const searchParams = { ...currentFilters, ...params };
       
-      const response = await datasetsAPI.getDatasets(searchParams);
+      const response = await datasetApi.getDatasets(searchParams);
       
-      if (response.success) {
-        set({
-          datasets: response.data,
-          pagination: response.pagination,
-          filters: searchParams,
-          isLoading: false
-        });
-      } else {
-        throw new Error(response.error?.message || '获取数据集列表失败');
-      }
-    } catch (error: any) {
+      // getDatasets 返回 PaginatedResponse<Dataset>，直接包含 data 和 pagination
       set({
-        error: error.message || '获取数据集列表失败',
+        datasets: response.data || [],
+        pagination: response.pagination,
+        filters: searchParams,
+        isLoading: false
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '获取数据集列表失败';
+      set({
+        error: errorMessage,
         isLoading: false
       });
       throw error;
@@ -91,19 +89,17 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const response = await datasetsAPI.getDataset(id);
+      // getDataset 直接返回 Dataset
+      const dataset = await datasetApi.getDataset(id);
       
-      if (response.success) {
-        set({
-          currentDataset: response.data,
-          isLoading: false
-        });
-      } else {
-        throw new Error(response.error?.message || '获取数据集详情失败');
-      }
-    } catch (error: any) {
       set({
-        error: error.message || '获取数据集详情失败',
+        currentDataset: dataset,
+        isLoading: false
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '获取数据集详情失败';
+      set({
+        error: errorMessage,
         isLoading: false
       });
       throw error;
@@ -114,23 +110,19 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const response = await datasetsAPI.createDataset(data);
+      // createDataset 直接返回 Dataset
+      const newDataset = await datasetApi.createDataset(data as Omit<Dataset, 'id' | 'owner_id' | 'created_at' | 'updated_at'>);
       
-      if (response.success) {
-        const newDataset = response.data;
-        
-        set(state => ({
-          datasets: [newDataset, ...state.datasets],
-          isLoading: false
-        }));
-        
-        return newDataset;
-      } else {
-        throw new Error(response.error?.message || '创建数据集失败');
-      }
-    } catch (error: any) {
+      set(state => ({
+        datasets: [newDataset, ...state.datasets],
+        isLoading: false
+      }));
+      
+      return newDataset;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '创建数据集失败';
       set({
-        error: error.message || '创建数据集失败',
+        error: errorMessage,
         isLoading: false
       });
       throw error;
@@ -141,26 +133,22 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const response = await datasetsAPI.updateDataset(id, data);
+      // updateDataset 直接返回 Dataset
+      const updatedDataset = await datasetApi.updateDataset(id, data as Partial<Dataset>);
       
-      if (response.success) {
-        const updatedDataset = response.data;
-        
-        set(state => ({
-          datasets: state.datasets.map(d => 
-            d.dataset_id === id ? updatedDataset : d
-          ),
-          currentDataset: state.currentDataset?.dataset_id === id 
-            ? updatedDataset 
-            : state.currentDataset,
-          isLoading: false
-        }));
-      } else {
-        throw new Error(response.error?.message || '更新数据集失败');
-      }
-    } catch (error: any) {
+      set(state => ({
+        datasets: state.datasets.map(d => 
+          d.dataset_id === id ? updatedDataset : d
+        ),
+        currentDataset: state.currentDataset?.dataset_id === id 
+          ? updatedDataset 
+          : state.currentDataset,
+        isLoading: false
+      }));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '更新数据集失败';
       set({
-        error: error.message || '更新数据集失败',
+        error: errorMessage,
         isLoading: false
       });
       throw error;
@@ -171,23 +159,21 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const response = await datasetsAPI.deleteDataset(id);
+      // deleteDataset 返回 void
+      await datasetApi.deleteDataset(id);
       
-      if (response.success) {
-        set(state => ({
-          datasets: state.datasets.filter(d => d.dataset_id !== id),
-          currentDataset: state.currentDataset?.dataset_id === id 
-            ? null 
-            : state.currentDataset,
-          selectedDatasets: state.selectedDatasets.filter(datasetId => datasetId !== id),
-          isLoading: false
-        }));
-      } else {
-        throw new Error(response.error?.message || '删除数据集失败');
-      }
-    } catch (error: any) {
+      set(state => ({
+        datasets: state.datasets.filter(d => d.dataset_id !== id),
+        currentDataset: state.currentDataset?.dataset_id === id 
+          ? null 
+          : state.currentDataset,
+        selectedDatasets: state.selectedDatasets.filter(datasetId => datasetId !== id),
+        isLoading: false
+      }));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '删除数据集失败';
       set({
-        error: error.message || '删除数据集失败',
+        error: errorMessage,
         isLoading: false
       });
       throw error;
@@ -217,21 +203,16 @@ export const useDatasetStore = create<DatasetState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const response = await datasetsAPI.shareDataset(id, {
-        user_ids: userIds,
-        role
-      });
+      // shareDataset 的参数是 (id: string, emails: string[], permission: 'viewer' | 'editor' | 'annotator')
+      await datasetApi.shareDataset(id, userIds, role as 'viewer' | 'editor' | 'annotator');
       
-      if (response.success) {
-        // 重新获取数据集详情以更新协作者列表
-        await get().fetchDataset(id);
-        set({ isLoading: false });
-      } else {
-        throw new Error(response.error?.message || '共享数据集失败');
-      }
-    } catch (error: any) {
+      // 重新获取数据集详情以更新协作者列表
+      await get().fetchDataset(id);
+      set({ isLoading: false });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '共享数据集失败';
       set({
-        error: error.message || '共享数据集失败',
+        error: errorMessage,
         isLoading: false
       });
       throw error;

@@ -49,7 +49,7 @@ export default function UploadPage() {
     }
   };
 
-  const handleUploadComplete = async (result: any) => {
+  const handleUploadComplete = async (result: { dataset_id?: string; temp_object_name?: string } | null) => {
     setIsUploading(false);
     setUploadComplete(true);
     
@@ -97,9 +97,10 @@ export default function UploadPage() {
           setTimeout(() => {
             router.push('/datasets');
           }, 1500);
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Failed to create dataset:', error);
-          toast.error(error.message || 'Failed to create dataset');
+          const message = error instanceof Error ? error.message : 'Failed to create dataset';
+          toast.error(message);
         }
       }
     } else {

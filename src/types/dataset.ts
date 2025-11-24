@@ -179,3 +179,6 @@ export interface DatasetQueryParams {
   status?: 'draft' | 'processing' | 'ready' | 'archived';
   is_favorite?: boolean;
 }
+
+// 数据集列表参数（别名，用于向后兼容）
+export type DatasetListParams = DatasetQueryParams;

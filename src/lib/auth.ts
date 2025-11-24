@@ -44,7 +44,7 @@ export function isTokenExpiringSoon(expiresIn: number = 300): boolean {
     
     // 如果Token在指定时间内过期，返回true
     return (expiresAt - now) < expiresIn;
-  } catch (error) {
+  } catch {
     return true;
   }
 }
@@ -52,7 +52,7 @@ export function isTokenExpiringSoon(expiresIn: number = 300): boolean {
 /**
  * 解析JWT Token
  */
-export function parseJWTPayload(token: string): any | null {
+export function parseJWTPayload(token: string): Record<string, unknown> | null {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -80,7 +80,10 @@ export function getTokenExpirationTime(): Date | null {
   const payload = parseJWTPayload(token);
   if (!payload || !payload.exp) return null;
 
-  return new Date(payload.exp * 1000);
+  const exp = payload.exp;
+  if (typeof exp !== 'number') return null;
+
+  return new Date(exp * 1000);
 }
 
 /**
@@ -91,7 +94,17 @@ export function getCurrentUserId(): string | null {
   if (!token) return null;
 
   const payload = parseJWTPayload(token);
-  return payload?.sub || payload?.user_id || payload?.id || null;
+  if (!payload) return null;
+  
+  const sub = payload.sub;
+  const userId = payload.user_id;
+  const id = payload.id;
+  
+  if (typeof sub === 'string') return sub;
+  if (typeof userId === 'string') return userId;
+  if (typeof id === 'string') return id;
+  
+  return null;
 }
 
 /**
@@ -102,7 +115,15 @@ export function getUserRole(): string | null {
   if (!token) return null;
 
   const payload = parseJWTPayload(token);
-  return payload?.role || payload?.user_role || null;
+  if (!payload) return null;
+  
+  const role = payload.role;
+  const userRole = payload.user_role;
+  
+  if (typeof role === 'string') return role;
+  if (typeof userRole === 'string') return userRole;
+  
+  return null;
 }
 
 /**
@@ -113,7 +134,19 @@ export function getUserPermissions(): string[] {
   if (!token) return [];
 
   const payload = parseJWTPayload(token);
-  return payload?.permissions || payload?.scopes || [];
+  if (!payload) return [];
+  
+  const permissions = payload.permissions;
+  const scopes = payload.scopes;
+  
+  if (Array.isArray(permissions) && permissions.every(p => typeof p === 'string')) {
+    return permissions;
+  }
+  if (Array.isArray(scopes) && scopes.every(s => typeof s === 'string')) {
+    return scopes;
+  }
+  
+  return [];
 }
 
 /**
@@ -263,7 +296,6 @@ export function canAccessDataset(
   datasetPermissions: string[] = []
 ): boolean {
   const currentUserId = getCurrentUserId();
-  const userRole = getUserRole();
 
   // 管理员和超级用户可以访问所有数据集
   if (isAdmin() || isSuperUser()) {
@@ -291,7 +323,6 @@ export function canAccessImage(
   imagePermissions: string[] = []
 ): boolean {
   const currentUserId = getCurrentUserId();
-  const userRole = getUserRole();
 
   // 管理员和超级用户可以访问所有图像
   if (isAdmin() || isSuperUser()) {
@@ -319,7 +350,6 @@ export function canAnnotateImage(
   imagePermissions: string[] = []
 ): boolean {
   const currentUserId = getCurrentUserId();
-  const userRole = getUserRole();
 
   // 管理员和超级用户可以标注所有图像
   if (isAdmin() || isSuperUser()) {
@@ -344,7 +374,6 @@ export function canAnnotateImage(
  */
 export function canManageDataset(datasetOwnerId: string): boolean {
   const currentUserId = getCurrentUserId();
-  const userRole = getUserRole();
 
   // 管理员和超级用户可以管理所有数据集
   if (isAdmin() || isSuperUser()) {
@@ -360,7 +389,6 @@ export function canManageDataset(datasetOwnerId: string): boolean {
  */
 export function canShareDataset(datasetOwnerId: string): boolean {
   const currentUserId = getCurrentUserId();
-  const userRole = getUserRole();
 
   // 管理员和超级用户可以共享所有数据集
   if (isAdmin() || isSuperUser()) {
@@ -376,7 +404,6 @@ export function canShareDataset(datasetOwnerId: string): boolean {
  */
 export function canDeleteDataset(datasetOwnerId: string): boolean {
   const currentUserId = getCurrentUserId();
-  const userRole = getUserRole();
 
   // 管理员和超级用户可以删除所有数据集
   if (isAdmin() || isSuperUser()) {
@@ -475,31 +502,37 @@ export function requiresAdmin(pathname: string): boolean {
 /**
  * 检查认证错误
  */
-export function isAuthError(error: any): boolean {
-  return (
-    error?.response?.status === 401 ||
-    error?.code === 'UNAUTHORIZED' ||
-    error?.message?.includes('认证') ||
-    error?.message?.includes('token')
-  );
+export function isAuthError(error: unknown): boolean {
+  if (error && typeof error === 'object') {
+    const err = error as { response?: { status?: number }; code?: string; message?: string };
+    return (
+      err.response?.status === 401 ||
+      err.code === 'UNAUTHORIZED' ||
+      (typeof err.message === 'string' && (err.message.includes('认证') || err.message.includes('token')))
+    );
+  }
+  return false;
 }
 
 /**
  * 检查权限错误
  */
-export function isPermissionError(error: any): boolean {
-  return (
-    error?.response?.status === 403 ||
-    error?.code === 'FORBIDDEN' ||
-    error?.message?.includes('权限') ||
-    error?.message?.includes('permission')
-  );
+export function isPermissionError(error: unknown): boolean {
+  if (error && typeof error === 'object') {
+    const err = error as { response?: { status?: number }; code?: string; message?: string };
+    return (
+      err.response?.status === 403 ||
+      err.code === 'FORBIDDEN' ||
+      (typeof err.message === 'string' && (err.message.includes('权限') || err.message.includes('permission')))
+    );
+  }
+  return false;
 }
 
 /**
  * 处理认证错误
  */
-export function handleAuthError(error: any): void {
+export function handleAuthError(error: unknown): void {
   if (isAuthError(error)) {
     // 清除所有认证信息
     clearAuthState();
@@ -548,7 +581,7 @@ export function saveAuthState(user: User, tokens: AuthTokens): void {
     
     // 保存认证状态摘要
     const state = {
-      userId: user.id,
+      userId: user.user_id,
       userRole: user.role,
       tokenExpirationTime: getTokenExpirationTime()?.toISOString(),
       timestamp: new Date().toISOString(),
@@ -563,7 +596,7 @@ export function saveAuthState(user: User, tokens: AuthTokens): void {
 export function restoreAuthState(): {
   user: User | null;
   tokens: AuthTokens | null;
-  state: any | null;
+  state: Record<string, unknown> | null;
 } {
   if (typeof window === 'undefined') {
     return { user: null, tokens: null, state: null };
@@ -590,7 +623,7 @@ export function restoreAuthState(): {
  * 同步认证状态
  */
 export function syncAuthState(): boolean {
-  const { user, tokens, state } = restoreAuthState();
+  const { user, tokens } = restoreAuthState();
   
   if (!user || !tokens) {
     return false;

@@ -1,18 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
-import Navigation from '@/components/layout/Navigation';
+import { Button } from '@/components/ui';
 import { 
   ArrowLeft, 
-  Save, 
-  RotateCcw, 
-  ZoomIn, 
-  ZoomOut, 
-  Move,
   Square,
-  Circle,
   Type,
   Trash2,
   Eye,
@@ -38,6 +31,19 @@ interface ClassInfo {
   name: string;
   color: string;
   class_id?: number;
+}
+
+interface BackendAnnotation {
+  _id: string;
+  class_name: string;
+  class_id?: number;
+  bbox: {
+    x_center: number;
+    y_center: number;
+    width: number;
+    height: number;
+  };
+  confidence?: number;
 }
 
 // 生成颜色的辅助函数
@@ -70,87 +76,99 @@ export default function AnnotateImagePage() {
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
   const [drawing, setDrawing] = useState(false);
-  const [currentTool, setCurrentTool] = useState<'bbox' | 'point'>('bbox');
+  const [currentTool] = useState<'bbox' | 'point'>('bbox');
   const [selectedAnnotation, setSelectedAnnotation] = useState<string | null>(null);
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
+  const [scale] = useState(1);
+  const [offset] = useState({ x: 0, y: 0 });
   const [showAnnotations, setShowAnnotations] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadImage = async () => {
+      try {
+        // 从 sessionStorage 读取图片数据
+        const imageDataStr = sessionStorage.getItem('currentImageData');
+        if (!imageDataStr) {
+          if (isMounted) {
+            toast.error('No image data found');
+          }
+          return;
+        }
+
+        const imageData = JSON.parse(imageDataStr);
+        
+        const loadedImage = {
+          url: imageData.file_url,
+          width: imageData.width,
+          height: imageData.height,
+          filename: imageData.filename
+        };
+
+        if (isMounted) {
+          setImage(loadedImage);
+        }
+        
+        // 转换后端返回的标注数据为前端格式
+        // YOLO格式: bbox = { x_center, y_center, width, height } (归一化坐标 0-1)
+        // 需要转换为像素坐标
+        const convertedAnnotations: Annotation[] = imageData.annotations.map((ann: BackendAnnotation) => ({
+          id: ann._id,
+          className: ann.class_name,
+          class_id: ann.class_id,
+          bbox: {
+            // 从归一化的 YOLO 格式转换为像素坐标
+            x: (ann.bbox.x_center - ann.bbox.width / 2) * imageData.width,
+            y: (ann.bbox.y_center - ann.bbox.height / 2) * imageData.height,
+            width: ann.bbox.width * imageData.width,
+            height: ann.bbox.height * imageData.height
+          },
+          confidence: ann.confidence
+        }));
+        
+        if (isMounted) {
+          setAnnotations(convertedAnnotations);
+        }
+
+        // 从 annotations 中提取所有不同的 class_name 作为 classes
+        const uniqueClasses = new Map<string, ClassInfo>();
+        imageData.annotations.forEach((ann: BackendAnnotation, index: number) => {
+          if (!uniqueClasses.has(ann.class_name)) {
+            uniqueClasses.set(ann.class_name, {
+              id: ann.class_name,
+              name: ann.class_name,
+              color: generateColor(ann.class_id || index),
+              class_id: ann.class_id
+            });
+          }
+        });
+        
+        const classesArray = Array.from(uniqueClasses.values());
+        
+        if (isMounted) {
+          setClasses(classesArray);
+          
+          // 设置默认选中第一个类别
+          if (classesArray.length > 0) {
+            setSelectedClass(classesArray[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load image:', error);
+        if (isMounted) {
+          toast.error('Failed to load image');
+        }
+      }
+    };
+
     loadImage();
+
+    return () => {
+      isMounted = false;
+    };
   }, [imageId]);
 
-  useEffect(() => {
-    drawCanvas();
-  }, [image, annotations, scale, offset, showAnnotations, selectedAnnotation]);
-
-  const loadImage = async () => {
-    try {
-      // 从 sessionStorage 读取图片数据
-      const imageDataStr = sessionStorage.getItem('currentImageData');
-      if (!imageDataStr) {
-        toast.error('No image data found');
-        return;
-      }
-
-      const imageData = JSON.parse(imageDataStr);
-      
-      const loadedImage = {
-        url: imageData.file_url,
-        width: imageData.width,
-        height: imageData.height,
-        filename: imageData.filename
-      };
-
-      setImage(loadedImage);
-      
-      // 转换后端返回的标注数据为前端格式
-      // YOLO格式: bbox = { x_center, y_center, width, height } (归一化坐标 0-1)
-      // 需要转换为像素坐标
-      const convertedAnnotations: Annotation[] = imageData.annotations.map((ann: any) => ({
-        id: ann._id,
-        className: ann.class_name,
-        class_id: ann.class_id,
-        bbox: {
-          // 从归一化的 YOLO 格式转换为像素坐标
-          x: (ann.bbox.x_center - ann.bbox.width / 2) * imageData.width,
-          y: (ann.bbox.y_center - ann.bbox.height / 2) * imageData.height,
-          width: ann.bbox.width * imageData.width,
-          height: ann.bbox.height * imageData.height
-        },
-        confidence: ann.confidence
-      }));
-      
-      setAnnotations(convertedAnnotations);
-
-      // 从 annotations 中提取所有不同的 class_name 作为 classes
-      const uniqueClasses = new Map<string, ClassInfo>();
-      imageData.annotations.forEach((ann: any, index: number) => {
-        if (!uniqueClasses.has(ann.class_name)) {
-          uniqueClasses.set(ann.class_name, {
-            id: ann.class_name,
-            name: ann.class_name,
-            color: generateColor(ann.class_id || index),
-            class_id: ann.class_id
-          });
-        }
-      });
-      
-      const classesArray = Array.from(uniqueClasses.values());
-      setClasses(classesArray);
-      
-      // 设置默认选中第一个类别
-      if (classesArray.length > 0) {
-        setSelectedClass(classesArray[0]);
-      }
-    } catch (error) {
-      console.error('Failed to load image:', error);
-      toast.error('Failed to load image');
-    }
-  };
-
-  const drawCanvas = () => {
+  const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx || !image) return;
@@ -231,7 +249,11 @@ export default function AnnotateImagePage() {
     if (drawing && currentTool === 'bbox') {
       // Can add realtime drawing logic here
     }
-  };
+  }, [image, annotations, scale, offset, showAnnotations, selectedAnnotation, classes, drawing, currentTool]);
+
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas]);
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!image) return;
@@ -282,30 +304,7 @@ export default function AnnotateImagePage() {
     }
   };
 
-  const handleSave = async () => {
-    try {
-      // Mock save annotations
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      toast.success('Annotations saved');
-      router.push(`/datasets/${datasetId}`);
-    } catch (error) {
-      toast.error('Save failed');
-    }
-  };
-
-  const handleZoomIn = () => {
-    setScale(prev => Math.min(prev * 1.2, 5));
-  };
-
-  const handleZoomOut = () => {
-    setScale(prev => Math.max(prev / 1.2, 0.1));
-  };
-
-  const handleReset = () => {
-    setScale(1);
-    setOffset({ x: 0, y: 0 });
-  };
+  // Removed unused handlers: handleSave, handleZoomIn, handleZoomOut, handleReset
 
   const handleDeleteAnnotation = (id: string) => {
     setAnnotations(prev => prev.filter(ann => ann.id !== id));
@@ -486,6 +485,7 @@ export default function AnnotateImagePage() {
               onClick={handleCanvasClick}
               onMouseDown={handleMouseDown}
             />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               ref={imageRef}
               src={image.url}

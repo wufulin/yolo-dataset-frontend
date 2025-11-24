@@ -111,19 +111,22 @@ export function requiresAuth(pathname: string): boolean {
 /**
  * 检查认证错误
  */
-export function isAuthError(error: any): boolean {
-  return (
-    error?.response?.status === 401 ||
-    error?.code === 'UNAUTHORIZED' ||
-    error?.message?.includes('认证') ||
-    error?.message?.includes('token')
-  );
+export function isAuthError(error: unknown): boolean {
+  if (error && typeof error === 'object') {
+    const err = error as { response?: { status?: number }; code?: string; message?: string };
+    return (
+      err.response?.status === 401 ||
+      err.code === 'UNAUTHORIZED' ||
+      (typeof err.message === 'string' && (err.message.includes('认证') || err.message.includes('token')))
+    );
+  }
+  return false;
 }
 
 /**
  * 处理认证错误
  */
-export function handleAuthError(error: any): void {
+export function handleAuthError(error: unknown): void {
   if (isAuthError(error)) {
     clearAuthState();
     

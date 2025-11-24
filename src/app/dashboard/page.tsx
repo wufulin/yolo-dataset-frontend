@@ -3,9 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
-import { getCurrentUser, clearAuthState } from '@/lib/auth-simple';
 import Navigation from '@/components/layout/Navigation';
-import { Plus, FolderOpen, Tag, LogOut, Settings, Image, ArrowRight, Sparkles } from 'lucide-react';
+import { Plus, FolderOpen, Tag, Image, ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DashboardStats {
@@ -48,91 +47,94 @@ export default function DashboardPage() {
     storagePercentage: 0
   });
   const [recentDatasets, setRecentDatasets] = useState<RecentDataset[]>([]);
-  const [user, setUser] = useState(getCurrentUser());
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadDashboardData = async () => {
+      try {
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const token = localStorage.getItem('token');
+        
+        // Load storage info
+        try {
+          const storageResponse = await fetch(`${API_BASE_URL}/api/v1/base-info/storage`, {
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+            },
+          });
+
+          if (storageResponse.ok && isMounted) {
+            const storageData: StorageInfo = await storageResponse.json();
+            setStats(prev => ({
+              ...prev,
+              storageUsed: storageData.used_formatted,
+              storageTotal: storageData.total_formatted,
+              storageUsage: `${storageData.used_formatted} / ${storageData.total_formatted}`,
+              storagePercentage: storageData.usage_percentage
+            }));
+          }
+        } catch (storageError) {
+          console.error('Failed to load storage info:', storageError);
+          // Continue with other data even if storage info fails
+        }
+
+        // Load datasets list (get all datasets for statistics, first 3 for Recent Datasets)
+        try {
+          const datasetsResponse = await fetch(`${API_BASE_URL}/api/v1/datasets?page=1&page_size=100`, {
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+            },
+          });
+
+          if (datasetsResponse.ok && isMounted) {
+            const datasetsData = await datasetsResponse.json();
+            const datasets = datasetsData.items || [];
+            
+            // Calculate statistics from all datasets (same as datasets page)
+            const totalDatasets = datasets.length;
+            const totalImages = datasets.reduce((sum: number, d: { num_images?: number }) => sum + (d.num_images || 0), 0);
+            const totalAnnotations = datasets.reduce((sum: number, d: { num_annotations?: number }) => sum + (d.num_annotations || 0), 0);
+            
+            // Update all statistics
+            setStats(prev => ({
+              ...prev,
+              datasetCount: totalDatasets,
+              imageCount: totalImages,
+              annotationCount: totalAnnotations
+            }));
+
+            // Convert to RecentDataset format and take only first 3
+            const recentDatasetsData = datasets.slice(0, 3).map((dataset: { id: string; name: string; num_images?: number; num_annotations?: number }) => ({
+              id: dataset.id,
+              name: dataset.name,
+              imageCount: dataset.num_images || 0,
+              annotationCount: dataset.num_annotations || 0
+            }));
+            
+            setRecentDatasets(recentDatasetsData);
+          }
+        } catch (datasetsError) {
+          console.error('Failed to load datasets:', datasetsError);
+          // Continue with empty list if datasets fail to load
+          if (isMounted) {
+            setRecentDatasets([]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+        if (isMounted) {
+          toast.error('Failed to load dashboard data');
+        }
+      }
+    };
+
     loadDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-      const token = localStorage.getItem('token');
-      
-      // Load storage info
-      try {
-        const storageResponse = await fetch(`${API_BASE_URL}/api/v1/base-info/storage`, {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
-          },
-        });
-
-        if (storageResponse.ok) {
-          const storageData: StorageInfo = await storageResponse.json();
-          setStats(prev => ({
-            ...prev,
-            storageUsed: storageData.used_formatted,
-            storageTotal: storageData.total_formatted,
-            storageUsage: `${storageData.used_formatted} / ${storageData.total_formatted}`,
-            storagePercentage: storageData.usage_percentage
-          }));
-        }
-      } catch (storageError) {
-        console.error('Failed to load storage info:', storageError);
-        // Continue with other data even if storage info fails
-      }
-
-      // Load datasets list (get all datasets for statistics, first 3 for Recent Datasets)
-      try {
-        const datasetsResponse = await fetch(`${API_BASE_URL}/api/v1/datasets?page=1&page_size=100`, {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
-          },
-        });
-
-        if (datasetsResponse.ok) {
-          const datasetsData = await datasetsResponse.json();
-          const datasets = datasetsData.items || [];
-          
-          // Calculate statistics from all datasets (same as datasets page)
-          const totalDatasets = datasets.length;
-          const totalImages = datasets.reduce((sum: number, d: any) => sum + (d.num_images || 0), 0);
-          const totalAnnotations = datasets.reduce((sum: number, d: any) => sum + (d.num_annotations || 0), 0);
-          
-          // Update all statistics
-          setStats(prev => ({
-            ...prev,
-            datasetCount: totalDatasets,
-            imageCount: totalImages,
-            annotationCount: totalAnnotations
-          }));
-
-          // Convert to RecentDataset format and take only first 3
-          const recentDatasetsData = datasets.slice(0, 3).map((dataset: any) => ({
-            id: dataset.id,
-            name: dataset.name,
-            imageCount: dataset.num_images || 0,
-            annotationCount: dataset.num_annotations || 0
-          }));
-          
-          setRecentDatasets(recentDatasetsData);
-        }
-      } catch (datasetsError) {
-        console.error('Failed to load datasets:', datasetsError);
-        // Continue with empty list if datasets fail to load
-        setRecentDatasets([]);
-      }
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      toast.error('Failed to load dashboard data');
-    }
-  };
-
-  const handleLogout = () => {
-    clearAuthState();
-    toast.success('Logged out successfully');
-    router.push('/auth/login');
-  };
 
   const handleQuickAction = (action: string) => {
     switch (action) {

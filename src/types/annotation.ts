@@ -54,8 +54,22 @@ export interface ImageMetadata {
   annotation_count: number;
 }
 
+// 标注类别
+export interface AnnotationClass {
+  class_id: number;
+  class_name: string;
+  display_name?: string;
+  color?: string;
+  description?: string;
+  dataset_id: string;
+  annotation_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // YOLO标注格式
 export interface YOLOAnnotation {
+  annotation_id: string;
   class_id: number;
   x_center: number; // 归一化坐标 [0, 1]
   y_center: number; // 归一化坐标 [0, 1]
@@ -179,7 +193,7 @@ export interface AnnotationsResponse {
     image_id: string;
     annotations: Annotation[];
     yolo_format?: string; // YOLO格式的标注文本
-    coco_format?: any;     // COCO格式标注对象
+    coco_format?: Record<string, unknown>;     // COCO格式标注对象
     summary: {
       total: number;
       high_quality: number;
@@ -228,6 +242,43 @@ export interface ImageQueryParams {
   has_annotations?: boolean;
   upload_status?: 'uploading' | 'completed' | 'failed' | 'processing';
   ready_for_annotation?: boolean;
+}
+
+// 图像类型别名（用于向后兼容）
+export type Image = ImageMetadata;
+
+// 图像列表参数（别名，用于向后兼容）
+export type ImageListParams = ImageQueryParams;
+
+// 标注查询参数
+export interface AnnotationQueryParams {
+  dataset_id?: string;
+  image_id?: string;
+  page?: number;
+  limit?: number;
+  sort_by?: 'created_at' | 'updated_at' | 'class_id' | 'confidence';
+  sort_order?: 'asc' | 'desc';
+  class_id?: number;
+  class_name?: string;
+  min_confidence?: number;
+  max_confidence?: number;
+  has_quality_assessment?: boolean;
+}
+
+// 标注列表参数（别名，用于向后兼容）
+export type AnnotationListParams = AnnotationQueryParams;
+
+// 图像详情类型
+export interface ImageDetail extends ImageMetadata {
+  dataset: {
+    dataset_id: string;
+    name: string;
+    privacy: string;
+    owner_id: string;
+  };
+  annotations?: Annotation[];
+  preview_url?: string;
+  signed_file_url?: string;
 }
 
 // 标注工具类型

@@ -5,7 +5,7 @@ export * from './annotation';
 export * from './upload';
 
 // API通用响应类型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
@@ -74,7 +74,7 @@ export interface ModalConfig {
 }
 
 // 表格列定义
-export interface TableColumn<T = any> {
+export interface TableColumn<T = unknown> {
   key: string;
   title: string;
   dataIndex: keyof T;
@@ -84,7 +84,7 @@ export interface TableColumn<T = any> {
   align?: 'left' | 'center' | 'right';
   sortable?: boolean;
   filterable?: boolean;
-  render?: (value: any, record: T, index: number) => React.ReactNode;
+  render?: (value: unknown, record: T, index: number) => React.ReactNode;
 }
 
 // 表格分页配置
@@ -109,7 +109,7 @@ export interface TreeNode {
   disabled?: boolean;
   selectable?: boolean;
   checkable?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // 文件树节点
@@ -121,7 +121,7 @@ export interface FileTreeNode {
   size?: number;
   children?: FileTreeNode[];
   parentId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // 快捷键配置
@@ -217,7 +217,7 @@ export interface ErrorInfo {
   lineNumber?: number;
   columnNumber?: number;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 // 用户反馈
@@ -295,7 +295,7 @@ export interface RealtimeEvent {
   type: 'annotation_created' | 'annotation_updated' | 'annotation_deleted' | 'user_joined' | 'user_left' | 'cursor_moved' | 'selection_changed';
   user_id: string;
   dataset_id: string;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -306,7 +306,7 @@ export interface AuditLog {
   action: string;
   resource_type: string;
   resource_id: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ip_address: string;
   user_agent: string;
   timestamp: string;

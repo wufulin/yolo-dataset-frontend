@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, CardContent } from '@/components/ui';
 import Navigation from '@/components/layout/Navigation';
 import { 
   ArrowLeft, 
@@ -30,8 +30,8 @@ interface ImageItem {
   channels: number;
   format: string;
   split: string;
-  annotations: any[];
-  metadata: any;
+  annotations: Array<Record<string, unknown>>;
+  metadata: Record<string, unknown>;
   is_annotated: boolean;
   annotation_count: number;
   created_at: string;
@@ -51,16 +51,7 @@ export default function DatasetDetailPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  useEffect(() => {
-    loadDatasetDetail();
-    setCurrentPage(1); // 重置页码当数据集变化时
-  }, [datasetId]);
-
-  useEffect(() => {
-    loadImages();
-  }, [datasetId, currentPage]);
-
-  const loadDatasetDetail = async () => {
+  const loadDatasetDetail = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/api/v1/datasets/${datasetId}`, {
@@ -79,9 +70,9 @@ export default function DatasetDetailPage() {
       console.error('Failed to load dataset details:', error);
       toast.error('Failed to load dataset details');
     }
-  };
+  }, [datasetId]);
 
-  const loadImages = async () => {
+  const loadImages = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -113,7 +104,17 @@ export default function DatasetDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [datasetId, currentPage, pageSize]);
+
+  useEffect(() => {
+    loadDatasetDetail();
+    setCurrentPage(1); // 重置页码当数据集变化时
+  }, [loadDatasetDetail]);
+
+  useEffect(() => {
+    loadImages();
+  }, [loadImages]);
+
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -314,6 +315,7 @@ export default function DatasetDetailPage() {
                     
                     {/* Thumbnail */}
                     <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0 shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:scale-105">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={image.file_url}
                         alt={image.filename}

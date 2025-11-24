@@ -1,12 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import type {
-  User,
   Dataset,
-  Image,
   YOLOAnnotation,
-  AnnotationClass,
   DatasetListParams,
   ImageListParams,
   AnnotationListParams,
@@ -75,10 +72,13 @@ export function useCurrentUser() {
     queryKey: queryKeys.auth.me,
     queryFn: api.auth.getCurrentUser,
     staleTime: 5 * 60 * 1000, // 5分钟
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: unknown) => {
       // 如果是401错误，不重试
-      if (error?.response?.status === 401) {
-        return false;
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 401) {
+          return false;
+        }
       }
       return failureCount < 3;
     },
@@ -98,7 +98,7 @@ export function useDatasets(params?: DatasetListParams & QueryParams) {
     queryKey: queryKeys.datasets.lists(params),
     queryFn: () => api.dataset.getDatasets(params),
     staleTime: 2 * 60 * 1000, // 2分钟
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -151,7 +151,7 @@ export function useImages(datasetId: string, params?: ImageListParams & QueryPar
     queryFn: () => api.image.getImages(datasetId, params),
     enabled: !!datasetId,
     staleTime: 5 * 60 * 1000, // 5分钟
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -236,9 +236,10 @@ export function useUploadStatus(uploadId: string) {
     queryKey: queryKeys.upload.status(uploadId),
     queryFn: () => api.upload.getUploadStatus(uploadId),
     enabled: !!uploadId,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // 如果上传未完成，每2秒刷新一次
-      if (data?.state === 'uploading' || data?.state === 'pending') {
+      const data = query.state.data;
+      if (data?.status === 'uploading' || data?.status === 'initialized') {
         return 2000;
       }
       return false;
@@ -282,8 +283,9 @@ export function useLogin() {
       queryClient.setQueryData(queryKeys.auth.me, user);
       toast.success('登录成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '登录失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '登录失败';
+      toast.error(message);
     },
   });
 }
@@ -303,8 +305,9 @@ export function useRegister() {
       queryClient.setQueryData(queryKeys.auth.me, user);
       toast.success('注册成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '注册失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '注册失败';
+      toast.error(message);
     },
   });
 }
@@ -322,7 +325,7 @@ export function useLogout() {
       queryClient.clear();
       toast.success('已退出登录');
     },
-    onError: (error: any) => {
+    onError: () => {
       // 即使登出API失败，也清除本地状态
       queryClient.clear();
       toast.success('已退出登录');
@@ -345,11 +348,12 @@ export function useCreateDataset() {
     onSuccess: (newDataset) => {
       // 更新数据集列表缓存
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.all });
-      queryClient.setQueryData(queryKeys.datasets.detail(newDataset.id), newDataset);
+      queryClient.setQueryData(queryKeys.datasets.detail(newDataset.dataset_id), newDataset);
       toast.success('数据集创建成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '创建数据集失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '创建数据集失败';
+      toast.error(message);
     },
   });
 }
@@ -370,8 +374,9 @@ export function useUpdateDataset() {
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.statistics(id) });
       toast.success('数据集更新成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '更新数据集失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '更新数据集失败';
+      toast.error(message);
     },
   });
 }
@@ -392,8 +397,9 @@ export function useDeleteDataset() {
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.all });
       toast.success('数据集删除成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '删除数据集失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '删除数据集失败';
+      toast.error(message);
     },
   });
 }
@@ -415,8 +421,9 @@ export function useShareDataset() {
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.detail(datasetId) });
       toast.success('数据集分享成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '分享数据集失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '分享数据集失败';
+      toast.error(message);
     },
   });
 }
@@ -437,13 +444,15 @@ export function useDeleteImage() {
     onSuccess: (_, { datasetId, imageId }) => {
       // 从缓存中移除
       queryClient.removeQueries({ queryKey: queryKeys.images.detail(datasetId, imageId) });
-      queryClient.removeQueries({ queryKey: queryKeys.images.thumbnail(datasetId, imageId) });
+      // 移除所有该图像的缩略图查询（使用前缀匹配）
+      queryClient.removeQueries({ queryKey: ['images', datasetId, 'thumbnail', imageId] });
       queryClient.invalidateQueries({ queryKey: queryKeys.images.all(datasetId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.statistics(datasetId) });
       toast.success('图像删除成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '删除图像失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '删除图像失败';
+      toast.error(message);
     },
   });
 }
@@ -477,9 +486,7 @@ export function useCreateAnnotation() {
       if (previousAnnotations) {
         const optimisticAnnotation: YOLOAnnotation = {
           ...annotation,
-          id: 'temp-' + Date.now(), // 临时ID
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          annotation_id: 'temp-' + Date.now(), // 临时ID
         };
         
         queryClient.setQueryData(
@@ -534,7 +541,7 @@ export function useUpdateAnnotation() {
       // 乐观更新
       if (previousAnnotations) {
         const updatedAnnotations = previousAnnotations.map(annotation =>
-          annotation.id === annotationId
+          annotation.annotation_id === annotationId
             ? { ...annotation, ...data, updated_at: new Date().toISOString() }
             : annotation
         );
@@ -589,7 +596,7 @@ export function useDeleteAnnotation() {
       // 乐观更新
       if (previousAnnotations) {
         const filteredAnnotations = previousAnnotations.filter(
-          annotation => annotation.id !== annotationId
+          annotation => annotation.annotation_id !== annotationId
         );
         
         queryClient.setQueryData(
@@ -642,8 +649,9 @@ export function useBatchUpdateAnnotations() {
       queryClient.invalidateQueries({ queryKey: queryKeys.datasets.statistics(datasetId) });
       toast.success('批量操作成功');
     },
-    onError: (error: any) => {
-      toast.error(error.message || '批量操作失败');
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : '批量操作失败';
+      toast.error(message);
     },
   });
 }

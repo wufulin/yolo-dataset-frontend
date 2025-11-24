@@ -7,7 +7,6 @@ import {
   Home, 
   FolderOpen, 
   Upload, 
-  Tag, 
   LogOut,
   Sparkles
 } from 'lucide-react';

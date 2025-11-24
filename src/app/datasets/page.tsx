@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import Navigation from '@/components/layout/Navigation';
-import { Plus, FolderOpen, Image, Tag, Calendar, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, FolderOpen, Image, Tag, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatasetResponse } from '@/types/dataset';
 
@@ -21,11 +21,7 @@ export default function DatasetsPage() {
   const [totalImages, setTotalImages] = useState(0);
   const [totalAnnotations, setTotalAnnotations] = useState(0);
 
-  useEffect(() => {
-    loadDatasets();
-  }, [currentPage]);
-
-  const loadDatasets = async () => {
+  const loadDatasets = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -100,7 +96,12 @@ export default function DatasetsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    loadDatasets();
+  }, [loadDatasets]);
+
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -325,7 +326,8 @@ export default function DatasetsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {datasets.map((dataset) => {
                   // 支持多种可能的 ID 字段名
-                  const datasetId = (dataset as any).id || (dataset as any)._id || (dataset as any).dataset_id;
+                  const datasetWithId = dataset as DatasetResponse & { id?: string; _id?: string; dataset_id?: string };
+                  const datasetId = datasetWithId.id || datasetWithId._id || datasetWithId.dataset_id;
                   
                   if (!datasetId) {
                     console.error('Dataset missing ID field:', dataset);
