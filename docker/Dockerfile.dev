@@ -1,72 +1,56 @@
-# 开发环境 - Next.js前端应用
-FROM node:18-alpine
-
-# 设置环境变量
-ENV NODE_ENV=development
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# 安装开发依赖
-RUN apk add --no-cache \
-    curl \
-    git \
-    watchman
-
-# 设置工作目录
-WORKDIR /app
-
-# 复制package文件
-COPY package*.json ./
-
-# 安装所有依赖 (包括devDependencies)
-RUN npm install
-
-# 创建非root用户
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-
-# 创建必要的目录
-RUN mkdir -p /app/.next/cache /app/.next/server /app/.next/static && \
-    chown -R nextjs:nodejs /app
-
-# 切换到非root用户
-USER nextjs
-
-# 暴露端口
-EXPOSE 3000 3001
-
-# 开发环境健康检查 (宽松)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
-
-# 开发环境启动命令 (热重载)
-CMD ["npm", "run", "dev"]
-
 # =============================================================================
-# 开发环境特性
+# Development environment features
 # =============================================================================
 
-# 1. 启用热重载
-# 2. 安装开发工具
-# 3. 宽松的安全配置
-# 4. 调试端口暴露
-# 5. 挂载卷支持
-# 6. Node.js文件监听优化
+# 1. Enable hot reload
+# 2. Install development tools
 
 # =============================================================================
-# 使用说明
+# Usage
 # =============================================================================
 
-# 构建开发镜像:
+# Build development image:
 # docker build -f docker/Dockerfile.dev -t yolo-frontend:dev .
 
-# 运行开发容器:
-# docker run -p 3000:3000 -p 3001:3001 -v $(pwd):/app yolo-frontend:dev
-
-# 调试模式:
-# docker run -p 3000:3000 -p 3001:3001 -e NODE_OPTIONS="--inspect=0.0.0.0:9229" -v $(pwd):/app yolo-frontend:dev
-
-# 带环境变量运行:
+# Run with environment variables:
 # docker run -p 3000:3000 \
 #   -e NEXT_PUBLIC_API_URL=http://localhost:8000 \
 #   -e NEXT_PUBLIC_MINIO_ENDPOINT=http://localhost:9000 \
 #   -v $(pwd):/app yolo-frontend:dev
+
+FROM node:20-alpine
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install development dependencies
+RUN apk add --no-cache \
+    curl \
+    git
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including devDependencies)
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001 && \
+    chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Development environment start command (hot reload)
+CMD ["npm", "run", "dev"]
