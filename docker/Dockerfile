@@ -47,7 +47,7 @@ RUN npm run build
 # =============================================================================
 # Runtime environment
 # =============================================================================
-FROM node:20-alpine
+FROM node:20-alpine as production
 
 # Install runtime dependencies
 RUN apk add --no-cache \
