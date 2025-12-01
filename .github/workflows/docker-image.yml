@@ -56,8 +56,8 @@ jobs:
         file: ./docker/Dockerfile
         target: production
         build-args: |
-          PUBLIC_API_BASE_URL=http://35.232.162.37:8000
-          PUBLIC_MINIO_ENDPOINT=http://35.232.162.37:9000
+          NEXT_PUBLIC_API_BASE_URL=http://35.232.162.37:8000
+          NEXT_PUBLIC_MINIO_ENDPOINT=http://35.232.162.37:9000
         push: true
         tags: |
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
