@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import Navigation from '@/components/layout/Navigation';
@@ -20,6 +20,12 @@ export default function DatasetsPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalImages, setTotalImages] = useState(0);
   const [totalAnnotations, setTotalAnnotations] = useState(0);
+  
+  // 使用useRef来存储当前的datasets状态，避免定时器中的闭包问题
+  const datasetsRef = useRef(datasets);
+  useEffect(() => {
+    datasetsRef.current = datasets;
+  }, [datasets]);
 
   const loadDatasets = useCallback(async () => {
     setLoading(true);
@@ -98,6 +104,107 @@ export default function DatasetsPage() {
     }
   }, [currentPage, pageSize]);
 
+  // 获取单个数据集的详细信息
+  const fetchDatasetStatus = useCallback(async (datasetId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/v1/datasets/${datasetId}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch dataset status');
+      }
+
+      const updatedDataset = await response.json();
+      return updatedDataset;
+    } catch (error) {
+      console.error(`Failed to fetch status for dataset ${datasetId}:`, error);
+      return null;
+    }
+  }, []);
+
+  // 定时更新 processing 状态的数据集
+  const updateProcessingDatasets = useCallback(async () => {
+    const currentDatasets = datasetsRef.current;
+    const processingDatasets = currentDatasets.filter(dataset => 
+      dataset.status === 'processing'
+    );
+
+    if (processingDatasets.length === 0) {
+      return;
+    }
+
+    console.log(`Checking status for ${processingDatasets.length} processing datasets...`);
+
+    const updatePromises = processingDatasets.map(async (dataset) => {
+      // 支持多种可能的 ID 字段名
+      const datasetWithId = dataset as DatasetResponse & { id?: string; _id?: string; dataset_id?: string };
+      const datasetId = datasetWithId.id || datasetWithId._id || datasetWithId.dataset_id;
+      
+      if (!datasetId) {
+        console.error('Dataset missing ID field:', dataset);
+        return null;
+      }
+
+      const updatedDataset = await fetchDatasetStatus(datasetId);
+      return updatedDataset ? { datasetId, updatedDataset } : null;
+    });
+
+    const results = await Promise.all(updatePromises);
+    const validUpdates = results.filter(result => result !== null);
+
+    if (validUpdates.length > 0) {
+      setDatasets(currentDatasets => 
+        currentDatasets.map(dataset => {
+          const datasetWithId = dataset as DatasetResponse & { id?: string; _id?: string; dataset_id?: string };
+          const datasetId = datasetWithId.id || datasetWithId._id || datasetWithId.dataset_id;
+          
+          const update = validUpdates.find(u => u?.datasetId === datasetId);
+          return update ? update.updatedDataset : dataset;
+        })
+      );
+
+      // 重新计算统计信息
+      const updatedImages = currentDatasets.reduce((sum: number, d: DatasetResponse) => sum + d.num_images, 0);
+      const updatedAnnotations = currentDatasets.reduce((sum: number, d: DatasetResponse) => sum + d.num_annotations, 0);
+      setTotalImages(updatedImages);
+      setTotalAnnotations(updatedAnnotations);
+
+      console.log(`Updated status for ${validUpdates.length} datasets`);
+    }
+  }, [fetchDatasetStatus]);
+
+  // 设置定时器，每5秒检查一次 processing 状态的数据集
+  useEffect(() => {
+    if (datasets.length === 0) {
+      return;
+    }
+
+    const hasProcessingDatasets = datasets.some(dataset => dataset.status === 'processing');
+    
+    if (!hasProcessingDatasets) {
+      return;
+    }
+
+    console.log('Setting up polling for processing datasets...');
+    
+    // 立即执行一次
+    updateProcessingDatasets();
+
+    // 设置定时器，每5秒执行一次
+    const interval = setInterval(() => {
+      updateProcessingDatasets();
+    }, 5000); // 5秒
+
+    return () => {
+      clearInterval(interval);
+      console.log('Cleared polling interval');
+    };
+  }, [datasets.length, updateProcessingDatasets]);
+
   useEffect(() => {
     loadDatasets();
   }, [loadDatasets]);
@@ -141,9 +248,14 @@ export default function DatasetsPage() {
   };
 
   const getStatusBadge = (status?: string) => {
-    const statusConfig: Record<string, { label: string; color: string }> = {
+    const statusConfig: Record<string, { label: string; color: string; animation?: string; icon?: React.ReactNode }> = {
       active: { label: 'Active', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-      processing: { label: 'Processing', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+      processing: { 
+        label: 'Processing', 
+        color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+        animation: 'animate-spin',
+        icon: <div className="w-2 h-2 border border-current border-t-transparent rounded-full animate-spin mr-1" />
+      },
       completed: { label: 'Completed', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
       draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' },
       ready: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
@@ -152,7 +264,8 @@ export default function DatasetsPage() {
 
     const config = status ? statusConfig[status] || statusConfig['active'] : statusConfig['active'];
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color} inline-flex items-center`}>
+        {config.icon}
         {config.label}
       </span>
     );

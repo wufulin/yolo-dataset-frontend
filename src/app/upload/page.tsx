@@ -64,48 +64,9 @@ export default function UploadPage() {
       setTimeout(() => {
         router.push('/datasets');
       }, 1500);
-    } else if (result && result.temp_object_name) {
-      // Single file uploaded to temp location, need to create dataset manually
-      // This case should not happen with current flow, but keep as fallback
-      if (datasetName.trim() && datasetType) {
-        try {
-          const token = localStorage.getItem('token');
-          const response = await fetch(`${API_BASE_URL}/api/v1/datasets`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token ? `Bearer ${token}` : 'Basic YWRtaW46YWRtaW4=',
-            },
-            body: JSON.stringify({
-              name: datasetName.trim(),
-              description: datasetDescription || undefined,
-              dataset_type: datasetTypeMap[datasetType],
-              class_names: []
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || 'Failed to create dataset');
-          }
-
-          const data = await response.json();
-          setDatasetId(data.id);
-          toast.success(`Dataset "${datasetName}" created successfully!`);
-          
-          // 跳转到数据集列表页
-          setTimeout(() => {
-            router.push('/datasets');
-          }, 1500);
-        } catch (error: unknown) {
-          console.error('Failed to create dataset:', error);
-          const message = error instanceof Error ? error.message : 'Failed to create dataset';
-          toast.error(message);
-        }
-      }
     } else {
-      // Upload completed but no dataset info
-      toast.success('File upload complete!');
+      // Upload failed
+      toast.error('File upload failed.');
     }
   };
 
@@ -245,7 +206,7 @@ export default function UploadPage() {
                         ) : (
                           <>
                             <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            Upload Complete
+                            Upload Complete and verifying...
                           </>
                         )}
                       </span>
