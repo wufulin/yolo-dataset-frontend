@@ -105,8 +105,15 @@ export default function DashboardPage() {
             }));
 
             // Convert to RecentDataset format and take only first 3
-            const recentDatasetsData = datasets.slice(0, 3).map((dataset: { id: string; name: string; num_images?: number; num_annotations?: number }) => ({
-              id: dataset.id,
+            const recentDatasetsData = datasets.slice(0, 3).map((dataset: {
+              id?: string; 
+              _id?: string; 
+              dataset_id?: string; 
+              name: string; 
+              num_images?: number; 
+              num_annotations?: number 
+            }) => ({
+              id: dataset._id || dataset.id || dataset.dataset_id,
               name: dataset.name,
               imageCount: dataset.num_images || 0,
               annotationCount: dataset.num_annotations || 0
